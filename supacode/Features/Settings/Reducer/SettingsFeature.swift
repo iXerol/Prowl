@@ -131,13 +131,21 @@ struct SettingsFeature {
         state.automaticallyArchiveMergedWorktrees = normalizedSettings.automaticallyArchiveMergedWorktrees
         state.promptForWorktreeCreation = normalizedSettings.promptForWorktreeCreation
         state.defaultWorktreeBaseDirectoryPath = normalizedSettings.defaultWorktreeBaseDirectoryPath ?? ""
+        state.repositorySettings?.globalDefaultWorktreeBaseDirectoryPath =
+          normalizedSettings.defaultWorktreeBaseDirectoryPath
         return .send(.delegate(.settingsChanged(normalizedSettings)))
 
       case .binding:
+        let defaultWorktreeBaseDirectoryPath = state.globalSettings.defaultWorktreeBaseDirectoryPath
+        state.repositorySettings?.globalDefaultWorktreeBaseDirectoryPath =
+          defaultWorktreeBaseDirectoryPath
         return persist(state)
 
       case .setSystemNotificationsEnabled(let isEnabled):
         state.systemNotificationsEnabled = isEnabled
+        let defaultWorktreeBaseDirectoryPath = state.globalSettings.defaultWorktreeBaseDirectoryPath
+        state.repositorySettings?.globalDefaultWorktreeBaseDirectoryPath =
+          defaultWorktreeBaseDirectoryPath
         return persist(state)
 
       case .setSelection(let selection):
