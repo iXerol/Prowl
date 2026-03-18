@@ -36,7 +36,7 @@
 		D64162AD2F23CAF100260CA3 /* ghostty */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ghostty; path = Resources/ghostty; sourceTree = "<group>"; };
 		D64162AE2F23CAF100260CA3 /* terminfo */ = {isa = PBXFileReference; lastKnownFileType = folder; name = terminfo; path = Resources/terminfo; sourceTree = "<group>"; };
 		D64162AF2F23CAF100260CA3 /* git-wt */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "git-wt"; path = "Resources/git-wt"; sourceTree = "<group>"; };
-		D69CE04A2F1F378200584C57 /* supacode.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = supacode.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D69CE04A2F1F378200584C57 /* Prowl.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Prowl.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D6A1CB2F2F1F4A48004FDABD /* GhosttyKit.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = GhosttyKit.xcframework; sourceTree = "<group>"; };
 		D6A1CB342F1F4AC2004FDABD /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = System/Library/Frameworks/Carbon.framework; sourceTree = SDKROOT; };
 		D6F821012F1FCBC1004B4174 /* supacodeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = supacodeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -112,7 +112,7 @@
 		D69CE04B2F1F378200584C57 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				D69CE04A2F1F378200584C57 /* supacode.app */,
+				D69CE04A2F1F378200584C57 /* Prowl.app */,
 				D6F821012F1FCBC1004B4174 /* supacodeTests.xctest */,
 			);
 			name = Products;
@@ -157,7 +157,7 @@
 				D1BB05882F5ACB5900553512 /* YiTong */,
 			);
 			productName = supacode;
-			productReference = D69CE04A2F1F378200584C57 /* supacode.app */;
+			productReference = D69CE04A2F1F378200584C57 /* Prowl.app */;
 			productType = "com.apple.product-type.application";
 		};
 		D6F821002F1FCBC1004B4174 /* supacodeTests */ = {
