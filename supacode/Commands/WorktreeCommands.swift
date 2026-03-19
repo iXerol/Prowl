@@ -96,6 +96,14 @@ struct WorktreeCommands: Commands {
       )
       .help("New Worktree (\(AppShortcuts.newWorktree.display))")
       .disabled(!repositories.canCreateWorktree)
+      Button("Canvas") {
+        store.send(.repositories(.toggleCanvas))
+      }
+      .keyboardShortcut(
+        AppShortcuts.toggleCanvas.keyEquivalent,
+        modifiers: AppShortcuts.toggleCanvas.modifiers
+      )
+      .help("Canvas (\(AppShortcuts.toggleCanvas.display))")
       Button("Archived Worktrees") {
         store.send(.repositories(.selectArchivedWorktrees))
       }

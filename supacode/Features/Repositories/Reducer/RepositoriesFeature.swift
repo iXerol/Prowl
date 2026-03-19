@@ -134,6 +134,7 @@ struct RepositoriesFeature {
     case repositoriesLoaded([Repository], failures: [LoadFailure], roots: [URL], animated: Bool)
     case selectArchivedWorktrees
     case selectCanvas
+    case toggleCanvas
     case setSidebarSelectedWorktreeIDs(Set<Worktree.ID>)
     case openRepositories([URL])
     case openRepositoriesFinished(
@@ -549,6 +550,18 @@ struct RepositoriesFeature {
         state.selection = .canvas
         state.sidebarSelectedWorktreeIDs = []
         return .none
+
+      case .toggleCanvas:
+        if state.isShowingCanvas {
+          // Exit canvas: select the last focused worktree, or the first available one.
+          let targetID = state.lastFocusedWorktreeID ?? state.orderedWorktreeRows().first?.id
+          guard let targetID else { return .none }
+          return .send(.selectWorktree(targetID, focusTerminal: true))
+        } else {
+          // Enter canvas if there are any open worktrees.
+          guard !state.orderedWorktreeRows().isEmpty else { return .none }
+          return .send(.selectCanvas)
+        }
 
       case .setSidebarSelectedWorktreeIDs(let worktreeIDs):
         let validWorktreeIDs = Set(state.orderedWorktreeRows().map(\.id))
