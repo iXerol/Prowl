@@ -83,6 +83,7 @@ struct RepositoriesFeature {
     var automaticallyArchiveMergedWorktrees = false
     var moveNotifiedWorktreeToTop = true
     var lastFocusedWorktreeID: Worktree.ID?
+    var preCanvasWorktreeID: Worktree.ID?
     var shouldRestoreLastFocusedWorktree = false
     var shouldSelectFirstAfterReload = false
     var isRefreshingWorktrees = false
@@ -134,6 +135,7 @@ struct RepositoriesFeature {
     case repositoriesLoaded([Repository], failures: [LoadFailure], roots: [URL], animated: Bool)
     case selectArchivedWorktrees
     case selectCanvas
+    case toggleCanvas
     case setSidebarSelectedWorktreeIDs(Set<Worktree.ID>)
     case openRepositories([URL])
     case openRepositoriesFinished(
@@ -292,6 +294,7 @@ struct RepositoriesFeature {
     case worktreeCreated(Worktree)
   }
 
+  @Dependency(TerminalClient.self) private var terminalClient
   @Dependency(AnalyticsClient.self) private var analyticsClient
   @Dependency(GitClientDependency.self) private var gitClient
   @Dependency(GithubCLIClient.self) private var githubCLI
@@ -546,9 +549,28 @@ struct RepositoriesFeature {
         return .send(.delegate(.selectedWorktreeChanged(nil)))
 
       case .selectCanvas:
+        // Remember the current worktree so toggleCanvas can restore it.
+        state.preCanvasWorktreeID = state.selectedWorktreeID
         state.selection = .canvas
         state.sidebarSelectedWorktreeIDs = []
         return .none
+
+      case .toggleCanvas:
+        if state.isShowingCanvas {
+          // Exit canvas: prefer the card focused in canvas, then the worktree
+          // we came from, then the first available worktree.
+          let targetID =
+            terminalClient.canvasFocusedWorktreeID()
+            ?? state.preCanvasWorktreeID
+            ?? state.lastFocusedWorktreeID
+            ?? state.orderedWorktreeRows().first?.id
+          guard let targetID else { return .none }
+          return .send(.selectWorktree(targetID, focusTerminal: true))
+        } else {
+          // Enter canvas if there are any open worktrees.
+          guard !state.orderedWorktreeRows().isEmpty else { return .none }
+          return .send(.selectCanvas)
+        }
 
       case .setSidebarSelectedWorktreeIDs(let worktreeIDs):
         let validWorktreeIDs = Set(state.orderedWorktreeRows().map(\.id))

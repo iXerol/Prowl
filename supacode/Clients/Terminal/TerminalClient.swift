@@ -4,6 +4,7 @@ import Foundation
 struct TerminalClient {
   var send: @MainActor @Sendable (Command) -> Void
   var events: @MainActor @Sendable () -> AsyncStream<Event>
+  var canvasFocusedWorktreeID: @MainActor @Sendable () -> Worktree.ID?
 
   enum Command: Equatable {
     case createTab(Worktree, runSetupScriptIfNew: Bool)
@@ -41,12 +42,14 @@ struct TerminalClient {
 extension TerminalClient: DependencyKey {
   static let liveValue = TerminalClient(
     send: { _ in fatalError("TerminalClient.send not configured") },
-    events: { fatalError("TerminalClient.events not configured") }
+    events: { fatalError("TerminalClient.events not configured") },
+    canvasFocusedWorktreeID: { nil }
   )
 
   static let testValue = TerminalClient(
     send: { _ in },
-    events: { AsyncStream { $0.finish() } }
+    events: { AsyncStream { $0.finish() } },
+    canvasFocusedWorktreeID: { nil }
   )
 }
 

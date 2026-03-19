@@ -13,6 +13,9 @@ final class WorktreeTerminalManager {
   private var eventContinuation: AsyncStream<TerminalClient.Event>.Continuation?
   private var pendingEvents: [TerminalClient.Event] = []
   var selectedWorktreeID: Worktree.ID?
+  /// The worktree+tab focused in Canvas, updated by CanvasView on card tap.
+  /// Used by toggleCanvas to know which worktree to return to.
+  var canvasFocusedWorktreeID: Worktree.ID?
 
   init(runtime: GhosttyRuntime) {
     self.runtime = runtime

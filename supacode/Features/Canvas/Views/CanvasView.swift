@@ -401,6 +401,13 @@ struct CanvasView: View {
     let previousTabID = focusedTabID
     focusedTabID = tabID
 
+    // Sync the tab selection on the owning worktree so that exiting canvas
+    // (via toggleCanvas → selectWorktree) will focus the correct tab.
+    if let ownerState = states.first(where: { $0.surfaceView(for: tabID) != nil }) {
+      ownerState.tabManager.selectTab(tabID)
+      terminalManager.canvasFocusedWorktreeID = ownerState.worktreeID
+    }
+
     // Unfocus all surfaces in the previous card's split tree
     if let previousTabID, previousTabID != tabID,
       let previousState = states.first(where: { $0.surfaceView(for: previousTabID) != nil })
@@ -430,11 +437,23 @@ struct CanvasView: View {
 
   private func activateCanvas() {
     cleanStaleLayouts()
-    for state in terminalManager.activeWorktreeStates {
+
+    let activeStates = terminalManager.activeWorktreeStates
+
+    // Auto-focus the card that was active before entering canvas.
+    if let selectedID = terminalManager.selectedWorktreeID,
+      let state = activeStates.first(where: { $0.worktreeID == selectedID }),
+      let tabID = state.tabManager.selectedTabId,
+      let surface = state.surfaceView(for: tabID)
+    {
+      focusCard(tabID, surfaceView: surface, states: activeStates)
+    }
+
+    for state in activeStates {
       state.setAllSurfacesOccluded()
     }
     // Un-occlude all surfaces visible on canvas (including split panes)
-    for state in terminalManager.activeWorktreeStates {
+    for state in activeStates {
       for tab in state.tabManager.tabs {
         for surface in state.splitTree(for: tab.id).leaves() {
           surface.setOcclusion(true)
