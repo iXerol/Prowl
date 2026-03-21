@@ -600,6 +600,7 @@ private let filteredGhosttyActionKeys: Set<String> = [
   "close_all_windows",
   "goto_window",
   "toggle_tab_overview",
+  "toggle_window_decorations",
   "inspector",
   "show_gtk_inspector",
   "show_on_screen_keyboard",
