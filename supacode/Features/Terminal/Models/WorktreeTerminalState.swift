@@ -816,7 +816,7 @@ final class WorktreeTerminalState {
     onNotificationReceived?(trimmedTitle, trimmedBody)
   }
 
-  private func handleCommandFinished(exitCode: Int?, durationNs: UInt64, surfaceId: UUID) {
+  func handleCommandFinished(exitCode: Int?, durationNs: UInt64, surfaceId: UUID) {
     guard commandFinishedNotificationEnabled else { return }
     let durationSeconds = Int(durationNs / 1_000_000_000)
     guard durationSeconds >= commandFinishedNotificationThreshold else { return }
@@ -834,7 +834,7 @@ final class WorktreeTerminalState {
     appendNotification(title: title, body: body, surfaceId: surfaceId)
   }
 
-  private static func formatDuration(_ seconds: Int) -> String {
+  static func formatDuration(_ seconds: Int) -> String {
     if seconds < 60 {
       return "\(seconds)s"
     }
