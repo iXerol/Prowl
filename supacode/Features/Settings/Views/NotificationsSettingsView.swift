@@ -4,6 +4,21 @@ import SwiftUI
 struct NotificationsSettingsView: View {
   @Bindable var store: StoreOf<SettingsFeature>
 
+  private var thresholdBinding: Binding<String> {
+    Binding(
+      get: { String(store.commandFinishedNotificationThreshold) },
+      set: { newValue in
+        if let parsed = Int(newValue) {
+          store.commandFinishedNotificationThreshold = min(max(parsed, 0), 600)
+        } else if newValue.isEmpty {
+          // Allow empty while typing, will reset on commit
+        } else {
+          store.commandFinishedNotificationThreshold = 10
+        }
+      }
+    )
+  }
+
   var body: some View {
     VStack(alignment: .leading) {
       Form {
@@ -38,16 +53,9 @@ struct NotificationsSettingsView: View {
           if store.commandFinishedNotificationEnabled {
             LabeledContent("Duration threshold") {
               HStack(spacing: 4) {
-                TextField(
-                  "",
-                  value: $store.commandFinishedNotificationThreshold,
-                  format: .number.grouping(.never)
-                )
-                .frame(width: 40)
-                .multilineTextAlignment(.trailing)
-                .onChange(of: store.commandFinishedNotificationThreshold) { _, newValue in
-                  store.commandFinishedNotificationThreshold = min(max(newValue, 0), 600)
-                }
+                TextField("", text: thresholdBinding)
+                  .frame(width: 40)
+                  .multilineTextAlignment(.trailing)
                 Text("seconds")
                   .foregroundStyle(.secondary)
               }
