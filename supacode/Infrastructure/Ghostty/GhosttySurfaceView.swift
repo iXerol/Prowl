@@ -96,6 +96,7 @@ final class GhosttySurfaceView: NSView, Identifiable {
     }
   }
   var onFocusChange: ((Bool) -> Void)?
+  var onKeyInput: (() -> Void)?
 
   private var accessibilityPaneIndexHelp: String?
 
@@ -532,6 +533,7 @@ final class GhosttySurfaceView: NSView, Identifiable {
       return
     }
     bridge.state.bellCount = 0
+    onKeyInput?()
     let (translationEvent, translationMods) = translationState(event, surface: surface)
     let action = event.isARepeat ? GHOSTTY_ACTION_REPEAT : GHOSTTY_ACTION_PRESS
     keyTextAccumulator = []

@@ -31,6 +31,7 @@ final class WorktreeTerminalState {
   var notificationsEnabled = true
   private var commandFinishedNotificationEnabled = true
   private var commandFinishedNotificationThreshold = 10
+  private var lastKeyInputTimeBySurface: [UUID: ContinuousClock.Instant] = [:]
   var hasUnseenNotification: Bool {
     notifications.contains { !$0.isRead }
   }
@@ -684,6 +685,11 @@ final class WorktreeTerminalState {
       self.emitFocusChangedIfNeeded(view.id)
       self.emitTaskStatusIfChanged()
     }
+    view.onKeyInput = { [weak self, weak view] in
+      guard let self, let view else { return }
+      self.recordKeyInput(forSurfaceID: view.id)
+      self.markNotificationsRead(forSurfaceID: view.id)
+    }
     surfaces[view.id] = view
     return view
   }
@@ -821,12 +827,25 @@ final class WorktreeTerminalState {
     onNotificationReceived?(trimmedTitle, trimmedBody)
   }
 
+  /// How recently the user must have typed for us to consider the exit user-initiated.
+  static let recentInteractionWindow: Duration = .seconds(3)
+
+  func recordKeyInput(forSurfaceID surfaceId: UUID) {
+    lastKeyInputTimeBySurface[surfaceId] = .now
+  }
+
   func handleCommandFinished(exitCode: Int?, durationNs: UInt64, surfaceId: UUID) {
     guard commandFinishedNotificationEnabled else { return }
     let durationSeconds = Int(durationNs / 1_000_000_000)
     guard durationSeconds >= commandFinishedNotificationThreshold else { return }
     // Skip user-initiated termination (Ctrl+C / kill signal)
     if let code = exitCode, code == 130 || code == 143 { return }
+    // Skip if the user was recently typing in this surface (e.g. /exit, quit)
+    if let lastInput = lastKeyInputTimeBySurface[surfaceId],
+      ContinuousClock.now - lastInput < Self.recentInteractionWindow
+    {
+      return
+    }
 
     let title = (exitCode == nil || exitCode == 0) ? "Command finished" : "Command failed"
     let formattedDuration = Self.formatDuration(durationSeconds)
