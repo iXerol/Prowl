@@ -45,3 +45,4 @@
 | Fix unicode paths in diff and untracked file output. | `1b32a26` | Fork only |
 | Fix settings migration to copy instead of move, preserving `~/.supacode` for upstream compatibility. | `07121b6` | Fork only |
 | Use Claude to generate user-facing release notes; skip generation when pre-written notes exist. | `64d0928`, `849b5cf` | Fork only |
+| Remove CI release workflows (`release.yml`, `release-tip.yml`) and make tip update channel equivalent to stable; releases are now handled locally via `/release` skill. | `7f79078`, `4546b66` | Fork only |
