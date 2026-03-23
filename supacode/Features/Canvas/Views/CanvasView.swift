@@ -3,6 +3,7 @@ import SwiftUI
 
 struct CanvasView: View {
   let terminalManager: WorktreeTerminalManager
+  var onExitToTab: () -> Void = {}
   @State private var layoutStore = CanvasLayoutStore()
 
   @State private var canvasOffset: CGSize = .zero
@@ -10,6 +11,7 @@ struct CanvasView: View {
   @State private var canvasScale: CGFloat = 1.0
   @State private var lastCanvasScale: CGFloat = 1.0
   @State private var focusedTabID: TerminalTabID?
+  @State private var lastTitleBarTapDate: Date = .distantPast
   @State private var activeResize: [TerminalTabID: ActiveResize] = [:]
   @State private var hasPerformedInitialFit = false
   @State private var viewportSize: CGSize = .zero
@@ -80,6 +82,19 @@ struct CanvasView: View {
                 onResizeEnd: { commitResize(for: tab.id, cardKey: cardKey, surfaces: tree.leaves()) },
                 onSplitOperation: { operation in
                   state.performSplitOperation(operation, in: tab.id)
+                },
+                onTitleBarTap: {
+                  let wasAlreadyFocused = focusedTabID == tab.id
+                  if let activeSurface = state.surfaceView(for: tab.id) {
+                    focusCard(tab.id, surfaceView: activeSurface, states: activeStates)
+                  }
+                  let now = Date()
+                  if wasAlreadyFocused,
+                    now.timeIntervalSince(lastTitleBarTapDate) <= NSEvent.doubleClickInterval
+                  {
+                    onExitToTab()
+                  }
+                  lastTitleBarTapDate = now
                 }
               )
               .scaleEffect(canvasScale, anchor: .center)
