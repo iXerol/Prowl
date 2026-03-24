@@ -1,18 +1,19 @@
 import ComposableArchitecture
 import DependenciesTestSupport
 import Foundation
-import Sharing
 import Testing
 
 @testable import supacode
 
 @MainActor
 struct RepositorySettingsFeatureTests {
-  @Test(.dependencies) func plainFolderTaskLoadsWithoutGitRequests() async {
+  @Test(.dependencies) func plainFolderTaskLoadsWithoutGitRequests() async throws {
     let rootURL = URL(fileURLWithPath: "/tmp/folder-\(UUID().uuidString)")
     let settingsStorage = SettingsTestStorage()
     let localStorage = RepositoryLocalSettingsTestStorage()
     let settingsFileURL = URL(fileURLWithPath: "/tmp/supacode-settings-\(UUID().uuidString).json")
+    let expectedGlobalDefaultWorktreeBaseDirectoryPath =
+      SupacodePaths.normalizedWorktreeBaseDirectoryPath("/tmp/worktrees")
     let storedSettings = RepositorySettings(
       setupScript: "echo setup",
       archiveScript: "echo archive",
@@ -26,21 +27,23 @@ struct RepositorySettingsFeatureTests {
     let storedOnevcatSettings = OnevcatRepositorySettings(
       customCommands: [.default(index: 0)]
     )
+    let repositoryID = rootURL.standardizedFileURL.path(percentEncoded: false)
     let bareRepositoryRequests = LockIsolated(0)
     let branchRefRequests = LockIsolated(0)
     let automaticBaseRefRequests = LockIsolated(0)
-    withDependencies {
-      $0.settingsFileStorage = settingsStorage.storage
-      $0.settingsFileURL = settingsFileURL
-      $0.repositoryLocalSettingsStorage = localStorage.storage
-    } operation: {
-      @Shared(.repositorySettings(rootURL)) var repositorySettings
-      @Shared(.onevcatRepositorySettings(rootURL)) var onevcatRepositorySettings
-      @Shared(.settingsFile) var settingsFile
-      $repositorySettings.withLock { $0 = storedSettings }
-      $onevcatRepositorySettings.withLock { $0 = storedOnevcatSettings }
-      $settingsFile.withLock { $0.global.defaultWorktreeBaseDirectoryPath = "/tmp/worktrees" }
-    }
+    var settingsFile = SettingsFile.default
+    settingsFile.global.defaultWorktreeBaseDirectoryPath = "/tmp/worktrees"
+    settingsFile.repositories[repositoryID] = storedSettings
+    let settingsData = try #require(try? JSONEncoder().encode(settingsFile))
+    try #require(try? settingsStorage.storage.save(settingsData, settingsFileURL))
+
+    let onevcatSettingsData = try #require(try? JSONEncoder().encode(storedOnevcatSettings))
+    try #require(
+      try? localStorage.save(
+        onevcatSettingsData,
+        at: SupacodePaths.onevcatRepositorySettingsURL(for: rootURL)
+      )
+    )
 
     let store = TestStore(
       initialState: RepositorySettingsFeature.State(
@@ -68,14 +71,15 @@ struct RepositorySettingsFeatureTests {
         return "origin/main"
       }
     }
-    store.exhaustivity = .off
 
     await store.send(.task)
-    await store.finish()
+    await store.receive(\.settingsLoaded, timeout: .seconds(5)) {
+      $0.settings = storedSettings
+      $0.onevcatSettings = storedOnevcatSettings
+      $0.globalDefaultWorktreeBaseDirectoryPath = expectedGlobalDefaultWorktreeBaseDirectoryPath
+    }
+    await store.finish(timeout: .seconds(5))
 
-    #expect(store.state.settings == storedSettings)
-    #expect(store.state.onevcatSettings == storedOnevcatSettings)
-    #expect(store.state.globalDefaultWorktreeBaseDirectoryPath == "/tmp/worktrees")
     #expect(store.state.isBranchDataLoaded == false)
     #expect(store.state.branchOptions.isEmpty)
     #expect(bareRepositoryRequests.value == 0)
