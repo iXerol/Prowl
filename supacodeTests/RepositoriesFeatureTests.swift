@@ -395,6 +395,57 @@ struct RepositoriesFeatureTests {
     await store.receive(\.delegate.selectedWorktreeChanged)
   }
 
+  @Test func toggleCanvasRestoresFocusedPlainRepositorySelection() async {
+    let repository = makeRepository(
+      id: "/tmp/folder",
+      name: "folder",
+      kind: .plain,
+      worktrees: []
+    )
+    var initialState = makeState(repositories: [repository])
+    initialState.selection = .canvas
+    let store = TestStore(initialState: initialState) {
+      RepositoriesFeature()
+    } withDependencies: {
+      $0.terminalClient.canvasFocusedWorktreeID = { repository.id }
+    }
+
+    await store.send(.toggleCanvas) {
+      $0.pendingTerminalFocusWorktreeIDs = [repository.id]
+    }
+    await store.receive(\.selectRepository) {
+      $0.selection = .repository(repository.id)
+      $0.sidebarSelectedWorktreeIDs = []
+    }
+    await store.receive(\.delegate.selectedWorktreeChanged)
+  }
+
+  @Test func toggleCanvasFallsBackToPreCanvasPlainRepositorySelection() async {
+    let repository = makeRepository(
+      id: "/tmp/folder",
+      name: "folder",
+      kind: .plain,
+      worktrees: []
+    )
+    var initialState = makeState(repositories: [repository])
+    initialState.selection = .canvas
+    initialState.preCanvasTerminalTargetID = repository.id
+    let store = TestStore(initialState: initialState) {
+      RepositoriesFeature()
+    } withDependencies: {
+      $0.terminalClient.canvasFocusedWorktreeID = { nil }
+    }
+
+    await store.send(.toggleCanvas) {
+      $0.pendingTerminalFocusWorktreeIDs = [repository.id]
+    }
+    await store.receive(\.selectRepository) {
+      $0.selection = .repository(repository.id)
+      $0.sidebarSelectedWorktreeIDs = []
+    }
+    await store.receive(\.delegate.selectedWorktreeChanged)
+  }
+
   @Test func selectRepositoryIgnoresUnknownRepository() async {
     let store = TestStore(initialState: RepositoriesFeature.State()) {
       RepositoriesFeature()

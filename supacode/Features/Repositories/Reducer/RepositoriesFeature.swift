@@ -84,6 +84,7 @@ struct RepositoriesFeature {
     var moveNotifiedWorktreeToTop = true
     var lastFocusedWorktreeID: Worktree.ID?
     var preCanvasWorktreeID: Worktree.ID?
+    var preCanvasTerminalTargetID: Worktree.ID?
     var shouldRestoreLastFocusedWorktree = false
     var shouldSelectFirstAfterReload = false
     var isRefreshingWorktrees = false
@@ -617,6 +618,7 @@ struct RepositoriesFeature {
       case .selectCanvas:
         // Remember the current worktree so toggleCanvas can restore it.
         state.preCanvasWorktreeID = state.selectedWorktreeID
+        state.preCanvasTerminalTargetID = state.selectedTerminalWorktree?.id
         state.selection = .canvas
         state.sidebarSelectedWorktreeIDs = []
         return .run { _ in
@@ -629,10 +631,18 @@ struct RepositoriesFeature {
           // we came from, then the first available worktree.
           let targetID =
             terminalClient.canvasFocusedWorktreeID()
+            ?? state.preCanvasTerminalTargetID
             ?? state.preCanvasWorktreeID
             ?? state.lastFocusedWorktreeID
             ?? state.orderedWorktreeRows().first?.id
           guard let targetID else { return .none }
+          if state.worktree(for: targetID) == nil,
+            let repository = state.repositories[id: targetID],
+            repository.kind == .plain
+          {
+            state.pendingTerminalFocusWorktreeIDs.insert(targetID)
+            return .send(.selectRepository(targetID))
+          }
           return .send(.selectWorktree(targetID, focusTerminal: true))
         } else {
           // Enter canvas if there are any open worktrees.
