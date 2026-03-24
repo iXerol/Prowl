@@ -41,10 +41,11 @@ struct WorktreeDetailTitleView: View {
   }
 
   private var labelContent: some View {
-    HStack(spacing: 6) {
+    HStack(spacing: horizontalSpacing) {
       Image(systemName: title.systemImage)
         .foregroundStyle(.secondary)
         .accessibilityHidden(true)
+        .frame(width: iconWidth, alignment: .center)
       Text(title.text)
       if title.supportsRename && isHovered {
         Image(systemName: "pencil")
@@ -53,6 +54,19 @@ struct WorktreeDetailTitleView: View {
       }
     }
     .font(.headline)
+    .padding(.horizontal, horizontalPadding)
+  }
+
+  private var iconWidth: CGFloat {
+    16
+  }
+
+  private var horizontalSpacing: CGFloat {
+    6
+  }
+
+  private var horizontalPadding: CGFloat {
+    title.supportsRename ? 0 : 6
   }
 }
 

@@ -40,16 +40,16 @@ struct RepositorySectionView: View {
     let isDragging = isDragActive
 
     let header = HStack {
-      Button(action: activateHeader) {
-        RepoHeaderRow(
-          name: repository.name,
-          isRemoving: isRemovingRepository
-        )
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(.rect)
+      RepoHeaderRow(
+        name: repository.name,
+        isRemoving: isRemovingRepository
+      )
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .contentShape(.rect)
+      .onTapGesture {
+        guard !isRemovingRepository else { return }
+        activateHeader()
       }
-      .buttonStyle(.plain)
-      .disabled(isRemovingRepository)
       .help(
         repository.capabilities.supportsWorktrees
           ? (isExpanded ? "Collapse" : "Expand")
