@@ -891,6 +891,18 @@ final class GhosttySurfaceView: NSView, Identifiable {
     ghostty_surface_set_occlusion(surface, visible)
   }
 
+  /// Clear the cached occlusion state so the next `setOcclusion` call always
+  /// reaches Ghostty, even when the desired value matches the old cache.
+  ///
+  /// This is needed when the surface's NSView is re-parented (e.g. canvas →
+  /// tab transition). During re-parenting the Metal layer briefly leaves the
+  /// visible layer tree, which can cause Ghostty's renderer to pause. Without
+  /// a fresh `ghostty_surface_set_occlusion` call, Ghostty never learns it
+  /// should resume.
+  func invalidateOcclusionCache() {
+    lastOcclusion = nil
+  }
+
   private func setSurfaceFocus(_ focused: Bool) {
     guard let surface else { return }
     if lastSurfaceFocus == focused {

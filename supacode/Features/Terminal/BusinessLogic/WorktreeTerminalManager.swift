@@ -113,12 +113,24 @@ final class WorktreeTerminalManager {
       }
     case .setSelectedWorktreeID(let id):
       guard id != selectedWorktreeID else { return }
+      let leavingCanvas = selectedWorktreeID == nil
       if let previousID = selectedWorktreeID, let previousState = states[previousID] {
         previousState.setAllSurfacesOccluded()
-      } else if selectedWorktreeID == nil {
+      } else if leavingCanvas {
         // Leaving canvas mode: occlude all worktrees except the newly selected one.
         for (wid, state) in states where wid != id {
           state.setAllSurfacesOccluded()
+        }
+        // During the canvas → tab view swap, surface NSViews are re-parented
+        // into a fresh hosting view. The Metal layer briefly leaves the visible
+        // layer tree, which can pause Ghostty's renderer. Because the surfaces
+        // were already marked visible in canvas (lastOcclusion == true), the
+        // setOcclusion(true) in syncFocus would be deduped and Ghostty would
+        // never learn it should resume. Refreshing the occlusion state
+        // invalidates the cache and forces the correct state to reach the
+        // C layer.
+        if let id, let state = states[id] {
+          state.refreshOcclusion()
         }
       }
       selectedWorktreeID = id
