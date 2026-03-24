@@ -49,7 +49,7 @@ struct AppearanceSettingsView: View {
             "Confirm before quitting",
             isOn: $store.confirmBeforeQuit
           )
-          .help("Ask before quitting Supacode")
+          .help("Ask before quitting Prowl")
         }
       }
       .formStyle(.grouped)

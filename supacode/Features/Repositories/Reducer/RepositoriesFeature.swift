@@ -2992,7 +2992,7 @@ struct RepositoriesFeature {
       }
     } message: {
       TextState(
-        "This removes the repository from Supacode. "
+        "This removes the repository from Prowl. "
           + "Worktrees and the main repository folder stay on disk."
       )
     }
