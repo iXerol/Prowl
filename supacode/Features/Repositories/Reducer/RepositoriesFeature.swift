@@ -144,6 +144,7 @@ struct RepositoriesFeature {
       [Repository],
       failures: [LoadFailure],
       invalidRoots: [String],
+      openFailures: [String],
       roots: [URL]
     )
     case selectRepository(Repository.ID?)
@@ -497,6 +498,7 @@ struct RepositoriesFeature {
           let existingEntries = await loadPersistedRepositoryEntries()
           var resolvedEntries: [PersistedRepositoryEntry] = []
           var invalidRoots: [String] = []
+          var openFailures: [String] = []
           for url in urls {
             do {
               let root = try await gitClient.repoRoot(url)
@@ -510,11 +512,18 @@ struct RepositoriesFeature {
               let normalizedPath = url.standardizedFileURL.path(percentEncoded: false)
               if normalizedPath.isEmpty {
                 invalidRoots.append(url.path(percentEncoded: false))
-              } else {
+              } else if Self.isNotGitRepositoryError(error) {
                 resolvedEntries.append(
                   PersistedRepositoryEntry(
                     path: normalizedPath,
                     kind: .plain
+                  )
+                )
+              } else {
+                openFailures.append(
+                  Self.openRepositoryFailureMessage(
+                    path: normalizedPath,
+                    error: error
                   )
                 )
               }
@@ -529,13 +538,20 @@ struct RepositoriesFeature {
               repositories,
               failures: failures,
               invalidRoots: invalidRoots,
+              openFailures: openFailures,
               roots: mergedRoots
             )
           )
         }
         .cancellable(id: CancelID.load, cancelInFlight: true)
 
-      case .openRepositoriesFinished(let repositories, let failures, let invalidRoots, let roots):
+      case .openRepositoriesFinished(
+        let repositories,
+        let failures,
+        let invalidRoots,
+        let openFailures,
+        let roots
+      ):
         state.isRefreshingWorktrees = false
         let previousSelection = state.selectedWorktreeID
         let previousSelectedWorktree = state.worktree(for: previousSelection)
@@ -551,11 +567,11 @@ struct RepositoriesFeature {
         state.loadFailuresByID = Dictionary(
           uniqueKeysWithValues: failures.map { ($0.rootID, $0.message) }
         )
-        if !invalidRoots.isEmpty {
-          let message = invalidRoots.map { "\($0) is not a Git repository." }.joined(separator: "\n")
+        let openFailureMessages = invalidRoots.map { "\($0) is not a Git repository." } + openFailures
+        if !openFailureMessages.isEmpty {
           state.alert = messageAlert(
             title: "Some folders couldn't be opened",
-            message: message
+            message: openFailureMessages.joined(separator: "\n")
           )
         }
         let selectedWorktree = state.worktree(for: state.selectedWorktreeID)
@@ -2760,6 +2776,18 @@ struct RepositoriesFeature {
       return false
     }
     return message.localizedCaseInsensitiveContains("not a git repository")
+  }
+
+  private nonisolated static func openRepositoryFailureMessage(path: String, error: any Error) -> String {
+    let detail: String
+    if case let GitClientError.commandFailed(_, message) = error,
+      !message.isEmpty
+    {
+      detail = message
+    } else {
+      detail = error.localizedDescription
+    }
+    return "\(path): \(detail)"
   }
 
   private func loadRepositories(

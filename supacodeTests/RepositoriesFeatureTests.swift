@@ -425,6 +425,70 @@ struct RepositoriesFeatureTests {
     #expect(savedEntries.value == expectedSavedEntries)
   }
 
+  @Test func openRepositoriesDoesNotDowngradeFoldersOnUnexpectedProbeError() async {
+    let repoSelection = "/tmp/repo/subdir"
+    let repoRoot = "/tmp/repo"
+    let blockedRoot = "/tmp/blocked"
+    let worktree = makeWorktree(id: "\(repoRoot)/main", name: "main", repoRoot: repoRoot)
+    let repository = makeRepository(id: repoRoot, worktrees: [worktree])
+    let savedEntries = LockIsolated<[[PersistedRepositoryEntry]]>([])
+
+    let store = TestStore(initialState: RepositoriesFeature.State()) {
+      RepositoriesFeature()
+    } withDependencies: {
+      $0.repositoryPersistence.loadRepositoryEntries = { [] }
+      $0.repositoryPersistence.saveRepositoryEntries = { entries in
+        savedEntries.withValue { $0.append(entries) }
+      }
+      $0.repositoryPersistence.saveRepositorySnapshot = { _ in }
+      $0.gitClient.repoRoot = { url in
+        let path = url.path(percentEncoded: false)
+        if path == repoSelection {
+          return URL(fileURLWithPath: repoRoot)
+        }
+        if path == blockedRoot {
+          throw GitClientError.commandFailed(command: "wt root", message: "permission denied")
+        }
+        Issue.record("Unexpected repoRoot lookup: \(path)")
+        return URL(fileURLWithPath: repoRoot)
+      }
+      $0.gitClient.worktrees = { url in
+        #expect(url.path(percentEncoded: false) == repoRoot)
+        return [worktree]
+      }
+    }
+
+    let expectedAlert = AlertState<RepositoriesFeature.Alert> {
+      TextState("Some folders couldn't be opened")
+    } actions: {
+      ButtonState(role: .cancel) {
+        TextState("OK")
+      }
+    } message: {
+      TextState("\(blockedRoot): permission denied")
+    }
+
+    await store.send(
+      .openRepositories([
+        URL(fileURLWithPath: repoSelection),
+        URL(fileURLWithPath: blockedRoot),
+      ])
+    )
+    await store.receive(\.openRepositoriesFinished) {
+      $0.repositories = [repository]
+      $0.repositoryRoots = [repoRoot].map { URL(fileURLWithPath: $0) }
+      $0.isInitialLoadComplete = true
+      $0.alert = expectedAlert
+    }
+    await store.receive(\.delegate.repositoriesChanged)
+    await store.finish()
+
+    let expectedSavedEntries = [
+      [PersistedRepositoryEntry(path: repoRoot, kind: .git)],
+    ]
+    #expect(savedEntries.value == expectedSavedEntries)
+  }
+
   @Test func repositoriesLoadedPersistsRepositorySnapshotOnSuccess() async {
     let repoRoot = "/tmp/repo"
     let worktree = makeWorktree(id: "\(repoRoot)/main", name: "main", repoRoot: repoRoot)
