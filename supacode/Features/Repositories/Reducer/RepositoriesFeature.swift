@@ -707,6 +707,15 @@ struct RepositoriesFeature {
         }
 
       case .createRandomWorktree:
+        if let selectedRepository = state.selectedRepository,
+          !selectedRepository.capabilities.supportsWorktrees
+        {
+          state.alert = messageAlert(
+            title: "Unable to create worktree",
+            message: "This folder doesn't support worktrees."
+          )
+          return .none
+        }
         guard let repository = repositoryForWorktreeCreation(state) else {
           let message: String
           if state.repositories.isEmpty {
@@ -726,6 +735,13 @@ struct RepositoriesFeature {
           state.alert = messageAlert(
             title: "Unable to create worktree",
             message: "Unable to resolve a repository for the new worktree."
+          )
+          return .none
+        }
+        guard repository.capabilities.supportsWorktrees else {
+          state.alert = messageAlert(
+            title: "Unable to create worktree",
+            message: "This folder doesn't support worktrees."
           )
           return .none
         }
@@ -3702,20 +3718,33 @@ private func setSingleWorktreeSelection(
 private func repositoryForWorktreeCreation(
   _ state: RepositoriesFeature.State
 ) -> Repository? {
-  if let selectedRepository = state.selectedRepository {
+  if let selectedRepository = state.selectedRepository,
+    selectedRepository.capabilities.supportsWorktrees
+  {
     return selectedRepository
   }
   if let selectedWorktreeID = state.selectedWorktreeID {
     if let pending = state.pendingWorktree(for: selectedWorktreeID) {
-      return state.repositories[id: pending.repositoryID]
+      if let repository = state.repositories[id: pending.repositoryID],
+        repository.capabilities.supportsWorktrees
+      {
+        return repository
+      }
+      return nil
     }
     for repository in state.repositories
     where repository.worktrees[id: selectedWorktreeID] != nil {
-      return repository
+      if repository.capabilities.supportsWorktrees {
+        return repository
+      }
+      return nil
     }
   }
-  if state.repositories.count == 1 {
-    return state.repositories.first
+  if state.repositories.count == 1,
+    let repository = state.repositories.first,
+    repository.capabilities.supportsWorktrees
+  {
+    return repository
   }
   return nil
 }

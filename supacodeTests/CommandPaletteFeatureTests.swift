@@ -161,6 +161,21 @@ struct CommandPaletteFeatureTests {
     )
   }
 
+  @Test func commandPaletteItems_omitsNewWorktreeForPlainFoldersOnly() {
+    let repository = makeRepository(
+      rootPath: "/tmp/folder",
+      name: "Folder",
+      kind: .plain,
+      worktrees: []
+    )
+    var state = RepositoriesFeature.State(repositories: [repository])
+    state.selection = .repository(repository.id)
+
+    let items = CommandPaletteFeature.commandPaletteItems(from: state)
+
+    #expect(items.contains(where: { $0.id == "global.new-worktree" }) == false)
+  }
+
   @Test func emptyQueryHidesGhosttyCommands() {
     let ghosttyItem = CommandPaletteItem(
       id: "ghostty.goto_split:right|Focus Split Right",
@@ -1071,6 +1086,7 @@ private func makeWorktree(
 private func makeRepository(
   rootPath: String,
   name: String,
+  kind: Repository.Kind = .git,
   worktrees: [Worktree]
 ) -> Repository {
   let rootURL = URL(fileURLWithPath: rootPath)
@@ -1078,6 +1094,7 @@ private func makeRepository(
     id: rootURL.path(percentEncoded: false),
     rootURL: rootURL,
     name: name,
+    kind: kind,
     worktrees: IdentifiedArray(uniqueElements: worktrees)
   )
 }

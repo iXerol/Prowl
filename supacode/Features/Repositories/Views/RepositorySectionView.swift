@@ -64,18 +64,20 @@ struct RepositorySectionView: View {
           .foregroundStyle(.secondary)
           .help("Repository options ")
           .disabled(isRemovingRepository)
-          Button {
-            store.send(.createRandomWorktreeInRepository(repository.id))
-          } label: {
-            Label("New Worktree", systemImage: "plus")
-              .labelStyle(.iconOnly)
-              .frame(maxHeight: .infinity)
-              .contentShape(Rectangle())
+          if repository.capabilities.supportsWorktrees {
+            Button {
+              store.send(.createRandomWorktreeInRepository(repository.id))
+            } label: {
+              Label("New Worktree", systemImage: "plus")
+                .labelStyle(.iconOnly)
+                .frame(maxHeight: .infinity)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .help("New Worktree (\(AppShortcuts.newWorktree.display))")
+            .disabled(isRemovingRepository)
           }
-          .buttonStyle(.plain)
-          .foregroundStyle(.secondary)
-          .help("New Worktree (\(AppShortcuts.newWorktree.display))")
-          .disabled(isRemovingRepository)
           Button {
             toggleExpanded()
           } label: {

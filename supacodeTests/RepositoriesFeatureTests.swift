@@ -432,6 +432,37 @@ struct RepositoriesFeatureTests {
     }
   }
 
+  @Test func canCreateWorktreeIsFalseForSelectedPlainRepository() {
+    let repository = makeRepository(id: "/tmp/folder", kind: .plain, worktrees: [])
+    var state = makeState(repositories: [repository])
+    state.selection = .repository(repository.id)
+
+    #expect(state.canCreateWorktree == false)
+  }
+
+  @Test func createRandomWorktreeInPlainRepositoryShowsAlert() async {
+    let repository = makeRepository(id: "/tmp/folder", kind: .plain, worktrees: [])
+    var initialState = makeState(repositories: [repository])
+    initialState.selection = .repository(repository.id)
+    let store = TestStore(initialState: initialState) {
+      RepositoriesFeature()
+    }
+
+    let expectedAlert = AlertState<RepositoriesFeature.Alert> {
+      TextState("Unable to create worktree")
+    } actions: {
+      ButtonState(role: .cancel) {
+        TextState("OK")
+      }
+    } message: {
+      TextState("This folder doesn't support worktrees.")
+    }
+
+    await store.send(.createRandomWorktree) {
+      $0.alert = expectedAlert
+    }
+  }
+
   @Test func createRandomWorktreeInRepositoryWithPromptEnabledPresentsPrompt() async {
     let repoRoot = "/tmp/repo"
     let mainWorktree = makeWorktree(id: repoRoot, name: "main", repoRoot: repoRoot)

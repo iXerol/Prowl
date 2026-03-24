@@ -164,6 +164,9 @@ struct CommandPaletteFeature {
     from repositories: RepositoriesFeature.State,
     ghosttyCommands: [GhosttyCommand] = []
   ) -> [CommandPaletteItem] {
+    let showsNewWorktreeAction =
+      repositories.repositories.isEmpty
+      || repositories.repositories.contains { $0.capabilities.supportsWorktrees }
     var items: [CommandPaletteItem] = [
       CommandPaletteItem(
         id: CommandPaletteItemID.globalCheckForUpdates,
@@ -183,24 +186,31 @@ struct CommandPaletteFeature {
         subtitle: nil,
         kind: .openRepository
       ),
-      CommandPaletteItem(
-        id: CommandPaletteItemID.globalNewWorktree,
-        title: "New Worktree",
-        subtitle: nil,
-        kind: .newWorktree
-      ),
+    ]
+    if showsNewWorktreeAction {
+      items.append(
+        CommandPaletteItem(
+          id: CommandPaletteItemID.globalNewWorktree,
+          title: "New Worktree",
+          subtitle: nil,
+          kind: .newWorktree
+        )
+      )
+    }
+    items.append(
       CommandPaletteItem(
         id: CommandPaletteItemID.globalRefreshWorktrees,
         title: "Refresh Worktrees",
         subtitle: nil,
         kind: .refreshWorktrees
-      ),
-    ]
+      )
+    )
     if repositories.selectedWorktreeID != nil {
       items.append(contentsOf: ghosttyCommandItems(ghosttyCommands))
     }
     if let selectedWorktreeID = repositories.selectedWorktreeID,
       let repositoryID = repositories.repositoryID(containing: selectedWorktreeID),
+      repositories.repositories[id: repositoryID]?.capabilities.supportsPullRequests == true,
       let pullRequest = repositories.worktreeInfo(for: selectedWorktreeID)?.pullRequest,
       pullRequest.number > 0,
       pullRequest.state.uppercased() != "CLOSED"
