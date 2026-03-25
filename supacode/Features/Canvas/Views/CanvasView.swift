@@ -154,7 +154,7 @@ struct CanvasView: View {
       return .handled
     }
     .onKeyPress("a", phases: .down) { keyPress in
-      guard keyPress.modifiers == [.command, .option] else { return .ignored }
+      guard keyPress.modifiers == [.command, .shift] else { return .ignored }
       selectAllCards()
       return .handled
     }
@@ -423,7 +423,7 @@ struct CanvasView: View {
           .accessibilityLabel("Select All")
       }
       .buttonStyle(.bordered)
-      .help("Select all cards for broadcast (⌘⌥A)")
+      .help("Select all cards for broadcast (⌘⇧A)")
 
       Button {
         withAnimation(.easeInOut(duration: 0.2)) {
