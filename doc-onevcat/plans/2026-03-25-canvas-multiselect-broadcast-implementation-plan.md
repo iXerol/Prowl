@@ -10,7 +10,7 @@
   - Broadcast of committed text plus a small set of normalized special keys
   - Whitelisted Cmd+key broadcast (Cmd+Backspace, Cmd+Arrow)
   - Cmd+V paste broadcast via pasteboard string
-  - Cmd+Shift+A select all, Escape to clear
+  - Cmd+Opt+A select all, Escape to clear
   - Per-card selection shield during broadcasting
   - IME-safe follower behavior using committed text only
   - Tests for selection state transitions and input normalization/filtering
@@ -35,7 +35,7 @@
 - Non-Cmd click on the primary during broadcasting passes through to terminal.
 - Clicking blank canvas clears selection and focus.
 - Escape clears broadcast selection.
-- Cmd+Shift+A selects all visible cards.
+- Cmd+Opt+A selects all visible cards.
 - Multiple selected cards receive mirrored committed text.
 - Cmd+V paste text is broadcast to followers.
 - Cmd+Backspace and Cmd+Arrow are broadcast to followers.

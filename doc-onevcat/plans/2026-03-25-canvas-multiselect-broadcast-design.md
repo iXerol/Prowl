@@ -97,7 +97,7 @@ These are related but not identical.
 
 ### Select all
 
-- `Cmd+Shift+A` selects all visible cards for broadcast.
+- `Cmd+Opt+A` selects all visible cards for broadcast.
 - A toolbar button provides the same action with tooltip showing the hotkey.
 - If a primary card already exists, it is preserved; otherwise the last visible card becomes primary.
 
@@ -169,7 +169,7 @@ A separate textbox is intentionally rejected because it makes the interaction fe
 
 The canvas toolbar (bottom-right) contains:
 
-- **Select All** button (`checkmark.rectangle.stack` icon) — tooltip: "Select all cards for broadcast (⌘⇧A)"
+- **Select All** button (`checkmark.rectangle.stack` icon) — tooltip: "Select all cards for broadcast (⌘⌥A)"
 - **Arrange** button — preserves card sizes
 - **Organize** button — uniform grid layout
 
@@ -236,7 +236,7 @@ Used for:
 
 - English text input that arrives as text
 - committed IME text
-- pasted text (Cmd+V reads `NSPasteboard.general` string content and broadcasts via `onCommittedText`)
+- pasted text (Cmd+V: after Ghostty handles the paste binding in `performKeyEquivalent`, reads `NSPasteboard.general` string and fires `onCommittedText`)
 
 Behavior:
 
@@ -387,10 +387,10 @@ var onCommittedText: ((String) -> Void)?
 var onMirroredKey: ((MirroredTerminalKey) -> Void)?
 ```
 
-- `onCommittedText` fires in `insertText()` after text is committed, and in `paste()` after reading the pasteboard string.
+- `onCommittedText` fires in `insertText()` after text is committed, and in `performKeyEquivalent` after Ghostty handles a Cmd+V binding.
 - `onMirroredKey` fires in `keyDown()` when the event normalizes to a `MirroredTerminalKey`.
 
-Note: A separate `onPasteText` callback was considered but rejected. Paste is handled by firing `onCommittedText` from `paste()` after the Ghostty binding action completes.
+Note: A separate `onPasteText` callback was considered but rejected. Paste is handled by firing `onCommittedText` from `performKeyEquivalent` after Ghostty processes the Cmd+V binding. The `paste(_ sender:)` IBAction is not used because Cmd+V is intercepted by Ghostty's binding system before reaching the responder chain's paste action.
 
 ### `MirroredTerminalKey`
 
@@ -465,8 +465,9 @@ Follower cards **never** steal first responder during broadcast. The primary car
 ### D. Paste broadcast (Cmd+V)
 
 1. User presses Cmd+V on the primary card.
-2. `paste()` calls `performBindingAction("paste_from_clipboard")` — Ghostty pastes from clipboard to the primary surface.
-3. `paste()` reads `NSPasteboard.general.string(forType: .string)` and fires `onCommittedText` with the text.
+2. `performKeyEquivalent` detects Cmd+V has a Ghostty binding, calls `keyDown(with: event)`.
+3. Ghostty internally performs `paste_from_clipboard` and writes clipboard content to the primary surface.
+4. After `keyDown` returns, `performKeyEquivalent` reads `NSPasteboard.general.string(forType: .string)` and fires `onCommittedText`.
 4. Broadcast callbacks mirror the pasted text to all follower cards.
 
 ### E. Enter key broadcast
@@ -524,7 +525,7 @@ Rejected because paste can be handled by firing `onCommittedText` from `paste()`
   - broadcast callback setup/teardown via `syncBroadcastCallbacks`
   - broadcast status UI in toolbar
   - selection shield (per-card via `showsSelectionShield(for:)`)
-  - `Cmd+Shift+A` select all, `Escape` to clear
+  - `Cmd+Opt+A` select all, `Escape` to clear
   - `NSEvent.modifierFlags` for reliable Cmd detection in tap handlers
 
 - `supacode/Features/Canvas/Views/CanvasCardView.swift`
@@ -620,7 +621,7 @@ Rejected because paste can be handled by firing `onCommittedText` from `paste()`
 - `Cmd+Click` terminal area of focused and unfocused cards
 - ordinary click exits selection mode correctly
 - blank-canvas click clears selection
-- `Cmd+Shift+A` selects all cards
+- `Cmd+Opt+A` selects all cards
 - `Escape` clears broadcast selection
 - click follower during broadcasting promotes to primary
 - click primary during broadcasting passes through to terminal
@@ -670,7 +671,7 @@ Implement this in slices:
 - IME hardening
 - paste behavior (Cmd+V broadcast)
 - Cmd+Backspace/Arrow whitelist
-- select all (Cmd+Shift+A)
+- select all (Cmd+Opt+A)
 - Escape to clear broadcast
 - per-card shield during broadcasting
 - edge-case polish and manual verification
