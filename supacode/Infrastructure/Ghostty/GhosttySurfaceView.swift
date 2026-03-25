@@ -1202,6 +1202,9 @@ final class GhosttySurfaceView: NSView, Identifiable {
 
   @IBAction func paste(_ sender: Any?) {
     performBindingAction("paste_from_clipboard")
+    if let text = NSPasteboard.general.string(forType: .string), !text.isEmpty {
+      onCommittedText?(text)
+    }
   }
 
   @IBAction func pasteSelection(_ sender: Any?) {
