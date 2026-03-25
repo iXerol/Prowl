@@ -405,7 +405,10 @@ struct CanvasView: View {
   private var canvasToolbar: some View {
     HStack(spacing: 8) {
       if selectionState.isBroadcasting {
-        Label("Broadcasting to \(selectionState.selectedTabIDs.count) cards", systemImage: "dot.radiowaves.left.and.right")
+        Label(
+          "Broadcasting to \(selectionState.selectedTabIDs.count) cards",
+          systemImage: "dot.radiowaves.left.and.right"
+        )
           .font(.callout)
           .padding(.horizontal, 10)
           .padding(.vertical, 6)
