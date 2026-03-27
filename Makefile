@@ -44,19 +44,46 @@ build-app: build-ghostty-xcframework # Build the macOS app (Debug)
 
 run-app: build-app # Build then launch (Debug) with log streaming
 	@settings="$$(xcodebuild -project supacode.xcodeproj -scheme supacode -configuration Debug -showBuildSettings -json 2>/dev/null)"; \
-	build_dir="$$(echo "$$settings" | jq -r '.[0].buildSettings.BUILT_PRODUCTS_DIR')"; \
-	product="$$(echo "$$settings" | jq -r '.[0].buildSettings.FULL_PRODUCT_NAME')"; \
+	build_dir="$$(echo "$$settings" | jq -er '.[0].buildSettings.BUILT_PRODUCTS_DIR')"; \
+	product="$$(echo "$$settings" | jq -er '.[0].buildSettings.FULL_PRODUCT_NAME')"; \
 	exec_name="$$(echo "$$settings" | jq -r '.[0].buildSettings.EXECUTABLE_NAME')"; \
+	if [ -z "$$build_dir" ] || [ -z "$$product" ] || [ "$$build_dir" = "null" ] || [ "$$product" = "null" ] || [ -z "$$exec_name" ] || [ "$$exec_name" = "null" ]; then \
+		echo "error: failed to resolve app path from build settings"; \
+		exit 1; \
+	fi; \
 	"$$build_dir/$$product/Contents/MacOS/$$exec_name"
 
 install-dev-build: build-app # install dev build to /Applications
 	@settings="$$(xcodebuild -project supacode.xcodeproj -scheme supacode -configuration Debug -showBuildSettings -json 2>/dev/null)"; \
-	build_dir="$$(echo "$$settings" | jq -r '.[0].buildSettings.BUILT_PRODUCTS_DIR')"; \
-	product="$$(echo "$$settings" | jq -r '.[0].buildSettings.FULL_PRODUCT_NAME')"; \
+	build_dir="$$(echo "$$settings" | jq -er '.[0].buildSettings.BUILT_PRODUCTS_DIR')"; \
+	product="$$(echo "$$settings" | jq -er '.[0].buildSettings.FULL_PRODUCT_NAME')"; \
+	if [ -z "$$build_dir" ] || [ -z "$$product" ] || [ "$$build_dir" = "null" ] || [ "$$product" = "null" ]; then \
+		echo "error: failed to resolve app path from build settings"; \
+		exit 1; \
+	fi; \
+	if [[ "$$product" != *.app ]]; then \
+		echo "error: unexpected product name: $$product"; \
+		exit 1; \
+	fi; \
 	src="$$build_dir/$$product"; \
 	dst="/Applications/$$product"; \
+	if [ "$$src" = "/" ] || [ "$$dst" = "/Applications" ] || [ "$$dst" = "/Applications/" ]; then \
+		echo "error: unsafe install path (src=$$src, dst=$$dst)"; \
+		exit 1; \
+	fi; \
+	case "$$dst" in \
+		/Applications/*.app) ;; \
+		*) \
+			echo "error: refusing to install outside /Applications/*.app: $$dst"; \
+			exit 1; \
+			;; \
+	esac; \
 	if [ ! -d "$$src" ]; then \
 		echo "app not found: $$src"; \
+		exit 1; \
+	fi; \
+	if [ ! -d "$$src/Contents" ]; then \
+		echo "error: source is not an app bundle: $$src"; \
 		exit 1; \
 	fi; \
 	echo "copying $$src -> $$dst"; \
@@ -114,7 +141,22 @@ install-release: build-ghostty-xcframework # Build Release, sign locally, instal
 	codesign -f -s "$$IDENTITY_SHA" -o runtime --timestamp --preserve-metadata=entitlements,requirements,flags -v "$$APP_PATH"; \
 	codesign -vvv --deep --strict "$$APP_PATH"; \
 	PRODUCT="$$(basename "$$APP_PATH")"; \
+	if [ -z "$$PRODUCT" ] || [ "$$PRODUCT" = "." ] || [[ "$$PRODUCT" != *.app ]]; then \
+		echo "error: unexpected release product name: $$PRODUCT"; \
+		exit 1; \
+	fi; \
 	DST="/Applications/$$PRODUCT"; \
+	if [ "$$DST" = "/Applications" ] || [ "$$DST" = "/Applications/" ]; then \
+		echo "error: unsafe install destination: $$DST"; \
+		exit 1; \
+	fi; \
+	case "$$DST" in \
+		/Applications/*.app) ;; \
+		*) \
+			echo "error: refusing to install outside /Applications/*.app: $$DST"; \
+			exit 1; \
+			;; \
+	esac; \
 	echo "copying $$APP_PATH -> $$DST"; \
 	rm -rf "$$DST"; \
 	ditto "$$APP_PATH" "$$DST"; \
