@@ -27,7 +27,7 @@ struct DetailToolbarTitle: Equatable {
   var helpText: String? {
     switch kind {
     case .branch:
-      return "Rename branch (⌘M)"
+      return "Rename branch (⌘⇧M)"
     case .folder:
       return nil
     }

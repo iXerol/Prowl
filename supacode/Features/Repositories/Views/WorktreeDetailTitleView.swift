@@ -18,7 +18,7 @@ struct WorktreeDetailTitleView: View {
           labelContent
         }
         .help(title.helpText ?? "")
-        .keyboardShortcut("m", modifiers: .command)
+        .keyboardShortcut("m", modifiers: [.command, .shift])
       } else {
         labelContent
       }
