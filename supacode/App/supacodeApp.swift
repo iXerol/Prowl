@@ -46,6 +46,13 @@ final class SupacodeAppDelegate: NSObject, NSApplicationDelegate {
     return showMainWindow(from: sender) ? false : true
   }
 
+  func application(_ sender: NSApplication, open urls: [URL]) {
+    let folders = urls.filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
+    guard !folders.isEmpty else { return }
+    appStore?.send(.repositories(.openRepositories(folders)))
+    _ = showMainWindow(from: sender)
+  }
+
   func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
     false
   }
