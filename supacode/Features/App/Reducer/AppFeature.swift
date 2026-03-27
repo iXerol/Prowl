@@ -82,6 +82,7 @@ struct AppFeature {
   @Dependency(SystemNotificationClient.self) private var systemNotificationClient
   @Dependency(TerminalClient.self) private var terminalClient
   @Dependency(WorktreeInfoWatcherClient.self) private var worktreeInfoWatcher
+  @Dependency(CustomShortcutRegistryClient.self) private var customShortcutRegistryClient
 
   var body: some Reducer<State, Action> {
     let core = Reduce<State, Action> { state, action in
@@ -159,9 +160,7 @@ struct AppFeature {
           return .merge(
             .merge(effects),
             .run { _ in
-              await MainActor.run {
-                OnevcatCustomShortcutRegistry.shared.setShortcuts([])
-              }
+              await customShortcutRegistryClient.setShortcuts([])
             }
           )
         }
@@ -194,9 +193,7 @@ struct AppFeature {
         )
         effects.append(
           .run { _ in
-            await MainActor.run {
-              OnevcatCustomShortcutRegistry.shared.setShortcuts([])
-            }
+            await customShortcutRegistryClient.setShortcuts([])
           }
         )
         effects.append(
@@ -640,9 +637,7 @@ struct AppFeature {
                 + "custom_shortcut=\(conflict.commandShortcutDisplay) result=customOverride"
             )
           }
-          await MainActor.run {
-            OnevcatCustomShortcutRegistry.shared.setShortcuts(shortcuts)
-          }
+          await customShortcutRegistryClient.setShortcuts(shortcuts)
         }
 
       case .systemNotificationsPermissionFailed(let errorMessage):

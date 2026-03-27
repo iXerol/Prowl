@@ -119,6 +119,7 @@ struct AppFeaturePlainFolderTerminalTests {
 
   @Test(.dependencies) func loadingConflictingShortcutKeepsRegistration() async {
     let repository = makePlainRepository()
+    let registeredShortcuts = LockIsolated<[UserCustomShortcut]>([])
     var state = AppFeature.State(
       repositories: makeRepositoriesState(repository: repository, selected: true),
       settings: SettingsFeature.State()
@@ -127,10 +128,10 @@ struct AppFeaturePlainFolderTerminalTests {
 
     let store = TestStore(initialState: state) {
       AppFeature()
-    }
-
-    await MainActor.run {
-      OnevcatCustomShortcutRegistry.shared.setShortcuts([])
+    } withDependencies: {
+      $0.customShortcutRegistryClient.setShortcuts = { shortcuts in
+        registeredShortcuts.setValue(shortcuts)
+      }
     }
 
     let conflicted = OnevcatRepositorySettings(
@@ -154,10 +155,7 @@ struct AppFeaturePlainFolderTerminalTests {
     await store.finish()
 
     let expectedShortcut = conflicted.customCommands[0].shortcut?.normalized()
-    await MainActor.run {
-      #expect(
-        OnevcatCustomShortcutRegistry.shared.registeredShortcutsForTesting == [expectedShortcut].compactMap { $0 })
-    }
+    #expect(registeredShortcuts.value == [expectedShortcut].compactMap { $0 })
   }
 
   @Test(.dependencies) func customCommandUsesPlainRepositoryTerminalTarget() async {
