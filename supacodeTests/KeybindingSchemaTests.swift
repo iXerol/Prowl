@@ -205,8 +205,11 @@ struct KeybindingSchemaTests {
     }
     """#
 
-    let settings = try JSONDecoder().decode(UserRepositorySettings.self, from: Data(fixture.utf8))
-    let migration = LegacyCustomCommandShortcutMigration.migrate(commands: settings.customCommands)
+    let legacySettings = try JSONDecoder().decode(
+      LegacyCustomCommandShortcutFixture.self,
+      from: Data(fixture.utf8)
+    )
+    let migration = LegacyCustomCommandShortcutMigration.migrate(commands: legacySettings.customCommands)
 
     #expect(migration.migratedCount == 2)
 
@@ -221,4 +224,8 @@ struct KeybindingSchemaTests {
       [.invalidShortcut, .missingCommandID]
     )
   }
+}
+
+private struct LegacyCustomCommandShortcutFixture: Decodable {
+  let customCommands: [UserCustomCommand]
 }
