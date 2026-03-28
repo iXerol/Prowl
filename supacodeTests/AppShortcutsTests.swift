@@ -169,4 +169,35 @@ struct AppShortcutsTests {
       #expect(arguments.contains(argument) == false)
     }
   }
+
+  @Test func resolverOverridePropagatesToMenuPaletteAndGhosttyArgs() {
+    let overrides = KeybindingUserOverrideStore(
+      overrides: [
+        AppShortcuts.ID.openSettings: KeybindingUserOverride(
+          binding: Keybinding(key: ";", modifiers: .init(command: true))
+        ),
+      ]
+    )
+    let resolved = KeybindingResolver.resolve(
+      schema: .appResolverSchema(),
+      userOverrides: overrides
+    )
+
+    expectNoDifference(
+      AppShortcuts.resolvedShortcut(for: AppShortcuts.ID.openSettings, in: resolved)?.display,
+      "⌘;"
+    )
+
+    let paletteItem = CommandPaletteItem(
+      id: "settings",
+      title: "Open Settings",
+      subtitle: nil,
+      kind: .openSettings
+    )
+    expectNoDifference(paletteItem.appShortcutLabel(in: resolved), "⌘;")
+
+    let arguments = AppShortcuts.ghosttyCLIKeybindArguments(from: resolved)
+    #expect(arguments.contains("--keybind=super+;=unbind"))
+    #expect(arguments.contains("--keybind=super+,=unbind") == false)
+  }
 }
