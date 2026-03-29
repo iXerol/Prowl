@@ -175,7 +175,7 @@ struct AppShortcutsTests {
       overrides: [
         AppShortcuts.CommandID.openSettings: KeybindingUserOverride(
           binding: Keybinding(key: ";", modifiers: .init(command: true))
-        ),
+        )
       ]
     )
     let resolved = KeybindingResolver.resolve(
@@ -207,7 +207,7 @@ struct AppShortcutsTests {
         AppShortcuts.CommandID.openSettings: KeybindingUserOverride(
           binding: Keybinding(key: ";", modifiers: .init(command: true)),
           isEnabled: false
-        ),
+        )
       ]
     )
     let resolved = KeybindingResolver.resolve(
@@ -245,7 +245,7 @@ struct AppShortcutsTests {
       overrides: [
         AppShortcuts.CommandID.openSettings: KeybindingUserOverride(
           binding: Keybinding(key: "space", modifiers: .init(command: true))
-        ),
+        )
       ]
     )
     let resolved = KeybindingResolver.resolve(
@@ -264,7 +264,7 @@ struct AppShortcutsTests {
       overrides: [
         AppShortcuts.CommandID.openSettings: KeybindingUserOverride(
           binding: Keybinding(key: "digit_1", modifiers: .init(command: true))
-        ),
+        )
       ]
     )
     let resolved = KeybindingResolver.resolve(
@@ -290,4 +290,3 @@ struct AppShortcutsTests {
     #expect(arguments.contains("--keybind=super+,=unbind") == false)
   }
 }
-

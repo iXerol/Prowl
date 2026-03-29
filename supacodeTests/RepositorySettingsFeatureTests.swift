@@ -135,7 +135,7 @@ struct RepositorySettingsFeatureTests {
             key: "b",
             modifiers: UserCustomShortcutModifiers(command: true)
           )
-        ),
+        )
       ]
     )
 

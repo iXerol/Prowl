@@ -21,7 +21,7 @@ struct AppFeatureCustomCommandTests {
         command: "swift test",
         execution: .shellScript,
         shortcut: nil,
-      ),
+      )
     ]
 
     let store = TestStore(initialState: state) {
@@ -56,7 +56,7 @@ struct AppFeatureCustomCommandTests {
         command: "pnpm test --watch",
         execution: .terminalInput,
         shortcut: nil,
-      ),
+      )
     ]
 
     let store = TestStore(initialState: state) {

@@ -37,6 +37,10 @@ nonisolated struct KeybindingModifiers: Codable, Equatable, Sendable {
     self.control = control
   }
 
+  var isEmpty: Bool {
+    !command && !shift && !option && !control
+  }
+
   var eventModifiers: EventModifiers {
     var value: EventModifiers = []
     if command {
