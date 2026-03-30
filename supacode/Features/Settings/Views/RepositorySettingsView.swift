@@ -175,7 +175,8 @@ struct RepositorySettingsView: View {
             if store.settings.setupScript.isEmpty {
               Text("claude --dangerously-skip-permissions")
                 .foregroundStyle(.secondary)
-                .padding(.leading, 6)
+                .padding(.leading, plainTextPlaceholderLeading)
+                .padding(.top, plainTextPlaceholderTop)
                 .font(.body)
                 .allowsHitTesting(false)
             }
@@ -199,7 +200,8 @@ struct RepositorySettingsView: View {
             if store.settings.archiveScript.isEmpty {
               Text("docker compose down")
                 .foregroundStyle(.secondary)
-                .padding(.leading, 6)
+                .padding(.leading, plainTextPlaceholderLeading)
+                .padding(.top, plainTextPlaceholderTop)
                 .font(.body)
                 .allowsHitTesting(false)
             }
@@ -223,7 +225,8 @@ struct RepositorySettingsView: View {
             if store.settings.runScript.isEmpty {
               Text("npm run dev")
                 .foregroundStyle(.secondary)
-                .padding(.leading, 6)
+                .padding(.leading, plainTextPlaceholderLeading)
+                .padding(.top, plainTextPlaceholderTop)
                 .font(.body)
                 .allowsHitTesting(false)
             }
@@ -667,8 +670,8 @@ struct RepositorySettingsView: View {
 
       ScrollView {
         LazyVGrid(
-          columns: Array(repeating: GridItem(.fixed(24), spacing: 12), count: 8),
-          spacing: 12
+          columns: Array(repeating: GridItem(.fixed(24), spacing: 8), count: 10),
+          spacing: 8
         ) {
           ForEach(Self.symbolPresets, id: \.self) { symbol in
             Button {
@@ -710,14 +713,16 @@ struct RepositorySettingsView: View {
       ZStack(alignment: .topLeading) {
         PlainTextEditor(
           text: command.command,
-          isMonospaced: true
+          isMonospaced: true,
+          shouldFocus: true
         )
         .frame(height: 140)
 
         if command.wrappedValue.command.isEmpty {
           Text(scriptPlaceholder(for: command.wrappedValue.execution))
             .foregroundStyle(.secondary)
-            .padding(.leading, 6)
+            .padding(.leading, plainTextPlaceholderLeading)
+            .padding(.top, plainTextPlaceholderTop)
             .font(.body.monospaced())
             .allowsHitTesting(false)
         }
@@ -977,17 +982,40 @@ struct RepositorySettingsView: View {
 
     let commandsBinding = $store.userSettings.customCommands
     var commands = commandsBinding.wrappedValue
-    if let removalIndex = commands.firstIndex(where: { $0.id == selectedCommandID }) {
-      commands.remove(at: removalIndex)
+    let removalIndex: Int?
+    if let index = commands.firstIndex(where: { $0.id == selectedCommandID }) {
+      removalIndex = index
+      commands.remove(at: index)
     } else if !commands.isEmpty {
+      removalIndex = commands.count - 1
       commands.removeLast()
     } else {
+      removalIndex = nil
+    }
+
+    guard let removalIndex else {
       return
     }
+
     let normalizedCommands = UserRepositorySettings.normalizedCommands(commands)
     commandsBinding.wrappedValue = normalizedCommands
-    syncSelectedCommandID(with: commandsBinding.wrappedValue)
-    clearRemovedCommandState(using: commandsBinding.wrappedValue)
+
+    if normalizedCommands.isEmpty {
+      selectedCustomCommandID = nil
+    } else if removalIndex < normalizedCommands.count {
+      selectedCustomCommandID = normalizedCommands[removalIndex].id
+    } else {
+      selectedCustomCommandID = normalizedCommands[normalizedCommands.count - 1].id
+    }
+    clearRemovedCommandState(using: normalizedCommands)
+  }
+
+  private var plainTextPlaceholderLeading: CGFloat {
+    4
+  }
+
+  private var plainTextPlaceholderTop: CGFloat {
+    -2
   }
 
   private func clearShortcut(for commandID: UserCustomCommand.ID) {

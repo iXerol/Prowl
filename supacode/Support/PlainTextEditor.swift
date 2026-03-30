@@ -4,6 +4,7 @@ import SwiftUI
 struct PlainTextEditor: NSViewRepresentable {
   @Binding var text: String
   var isMonospaced: Bool = false
+  var shouldFocus: Bool = false
 
   func makeCoordinator() -> Coordinator {
     Coordinator(text: $text)
@@ -47,6 +48,11 @@ struct PlainTextEditor: NSViewRepresentable {
     let updatedFont = editorFont
     if textView.font != updatedFont {
       textView.font = updatedFont
+    }
+    if shouldFocus,
+      textView.window?.firstResponder !== textView
+    {
+      textView.window?.makeFirstResponder(textView)
     }
   }
 
