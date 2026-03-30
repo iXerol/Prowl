@@ -1,8 +1,6 @@
 import Foundation
 
 nonisolated struct UserRepositorySettings: Codable, Equatable, Sendable {
-  static let maxCustomCommands = 3
-
   var customCommands: [UserCustomCommand]
 
   static let `default` = UserRepositorySettings(customCommands: [])
@@ -26,7 +24,7 @@ nonisolated struct UserRepositorySettings: Codable, Equatable, Sendable {
   }
 
   static func normalizedCommands(_ commands: [UserCustomCommand]) -> [UserCustomCommand] {
-    Array(commands.prefix(maxCustomCommands)).map { $0.normalized() }
+    commands.map { $0.normalized() }
   }
 }
 

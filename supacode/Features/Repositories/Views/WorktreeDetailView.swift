@@ -523,39 +523,46 @@ struct WorktreeDetailView: View {
         }
       }
 
-      if let command = customCommand(at: 0) {
-        ToolbarItem {
-          customCommandButton(command, index: 0)
+      let entries = customCommandEntries
+      let inlineEntries = Array(entries.prefix(3))
+      let overflowEntries = Array(entries.dropFirst(3))
+
+      if !inlineEntries.isEmpty {
+        ToolbarItemGroup {
+          ForEach(inlineEntries, id: \.command.id) { entry in
+            customCommandButton(entry.command, index: entry.index)
+          }
         }
       }
-      if let command = customCommand(at: 1) {
+
+      if !overflowEntries.isEmpty {
         ToolbarItem {
-          customCommandButton(command, index: 1)
-        }
-      }
-      if let command = customCommand(at: 2) {
-        ToolbarItem {
-          customCommandButton(command, index: 2)
+          CustomCommandOverflowButton(
+            entries: overflowEntries,
+            shortcutDisplay: customCommandShortcutDisplay(for:),
+            onRunCustomCommand: onRunCustomCommand
+          )
         }
       }
     }
 
-    private func customCommand(at index: Int) -> UserCustomCommand? {
-      guard toolbarState.customCommands.indices.contains(index) else {
-        return nil
-      }
-      return toolbarState.customCommands[index]
+    private var customCommandEntries: [(index: Int, command: UserCustomCommand)] {
+      Array(toolbarState.customCommands.enumerated()).map { (index: $0.offset, command: $0.element) }
     }
 
     private func customCommandButton(_ command: UserCustomCommand, index: Int) -> some View {
       UserCustomCommandToolbarButton(
         title: command.resolvedTitle,
         systemImage: command.resolvedSystemImage,
-        shortcut: command.shortcut?.isValid == true ? command.shortcut?.display : nil,
+        shortcut: customCommandShortcutDisplay(for: command),
         action: {
           onRunCustomCommand(index)
         }
       )
+    }
+
+    private func customCommandShortcutDisplay(for command: UserCustomCommand) -> String? {
+      shortcutDisplay(for: LegacyCustomCommandShortcutMigration.customCommandBindingID(for: command.id))
     }
 
     private func shortcutDisplay(for commandID: String) -> String? {
@@ -761,6 +768,65 @@ private struct UserCustomCommandToolbarButton: View {
       return "\(title) (\(shortcut))"
     }
     return title
+  }
+}
+
+private struct CustomCommandOverflowButton: View {
+  let entries: [(index: Int, command: UserCustomCommand)]
+  let shortcutDisplay: (UserCustomCommand) -> String?
+  let onRunCustomCommand: (Int) -> Void
+
+  @State private var isPresented = false
+  private let maxVisibleRows = 10
+
+  var body: some View {
+    Button {
+      isPresented.toggle()
+    } label: {
+      Image(systemName: "chevron.down")
+        .font(.caption2)
+        .accessibilityLabel("More custom commands")
+    }
+    .help("More custom commands")
+    .popover(isPresented: $isPresented, arrowEdge: .bottom) {
+      ScrollView {
+        VStack(alignment: .leading, spacing: 2) {
+          ForEach(entries, id: \.command.id) { entry in
+            Button {
+              isPresented = false
+              onRunCustomCommand(entry.index)
+            } label: {
+              HStack(spacing: 8) {
+                Image(systemName: entry.command.resolvedSystemImage)
+                  .foregroundStyle(.secondary)
+                  .frame(width: 14)
+                  .accessibilityHidden(true)
+                Text(entry.command.resolvedTitle)
+                  .lineLimit(1)
+                Spacer(minLength: 0)
+                if let shortcut = shortcutDisplay(entry.command) {
+                  Text(shortcut)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                }
+              }
+              .padding(.horizontal, 8)
+              .padding(.vertical, 6)
+              .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+          }
+        }
+        .padding(8)
+      }
+      .frame(width: 320, height: popoverHeight)
+    }
+  }
+
+  private var popoverHeight: CGFloat {
+    let visibleRows = min(maxVisibleRows, max(entries.count, 1))
+    return CGFloat(visibleRows) * 32 + 16
   }
 }
 

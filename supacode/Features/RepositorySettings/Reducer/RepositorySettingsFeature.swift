@@ -14,6 +14,7 @@ struct RepositorySettingsFeature {
     var branchOptions: [String] = []
     var defaultWorktreeBaseRef = "origin/main"
     var isBranchDataLoaded = false
+    var keybindingUserOverrides: KeybindingUserOverrideStore = .empty
 
     var capabilities: Repository.Capabilities {
       switch repositoryKind {
@@ -63,7 +64,8 @@ struct RepositorySettingsFeature {
       RepositorySettings,
       UserRepositorySettings,
       isBareRepository: Bool,
-      globalDefaultWorktreeBaseDirectoryPath: String?
+      globalDefaultWorktreeBaseDirectoryPath: String?,
+      keybindingUserOverrides: KeybindingUserOverrideStore
     )
     case branchDataLoaded([String], defaultBaseRef: String)
     case delegate(Delegate)
@@ -90,13 +92,15 @@ struct RepositorySettingsFeature {
         let userSettings = userRepositorySettings
         let globalDefaultWorktreeBaseDirectoryPath =
           settingsFile.global.defaultWorktreeBaseDirectoryPath
+        let keybindingUserOverrides = settingsFile.global.keybindingUserOverrides
         guard state.capabilities.supportsRepositoryGitSettings else {
           return .send(
             .settingsLoaded(
               settings,
               userSettings,
               isBareRepository: false,
-              globalDefaultWorktreeBaseDirectoryPath: globalDefaultWorktreeBaseDirectoryPath
+              globalDefaultWorktreeBaseDirectoryPath: globalDefaultWorktreeBaseDirectoryPath,
+              keybindingUserOverrides: keybindingUserOverrides
             )
           )
         }
@@ -108,7 +112,8 @@ struct RepositorySettingsFeature {
               settings,
               userSettings,
               isBareRepository: isBareRepository,
-              globalDefaultWorktreeBaseDirectoryPath: globalDefaultWorktreeBaseDirectoryPath
+              globalDefaultWorktreeBaseDirectoryPath: globalDefaultWorktreeBaseDirectoryPath,
+              keybindingUserOverrides: keybindingUserOverrides
             )
           )
           let branches: [String]
@@ -126,7 +131,11 @@ struct RepositorySettingsFeature {
         }
 
       case .settingsLoaded(
-        let settings, let userSettings, let isBareRepository, let globalDefaultWorktreeBaseDirectoryPath
+        let settings,
+        let userSettings,
+        let isBareRepository,
+        let globalDefaultWorktreeBaseDirectoryPath,
+        let keybindingUserOverrides
       ):
         var updatedSettings = settings
         updatedSettings.worktreeBaseDirectoryPath = SupacodePaths.normalizedWorktreeBaseDirectoryPath(
@@ -142,6 +151,7 @@ struct RepositorySettingsFeature {
         state.globalDefaultWorktreeBaseDirectoryPath =
           SupacodePaths.normalizedWorktreeBaseDirectoryPath(globalDefaultWorktreeBaseDirectoryPath)
         state.isBareRepository = isBareRepository
+        state.keybindingUserOverrides = keybindingUserOverrides
         guard updatedSettings != settings else { return .none }
         let rootURL = state.rootURL
         @Shared(.repositorySettings(rootURL)) var repositorySettings
@@ -175,19 +185,8 @@ struct RepositorySettingsFeature {
         )
         @Shared(.repositorySettings(rootURL)) var repositorySettings
         @Shared(.userRepositorySettings(rootURL)) var userRepositorySettings
-        let previousUserSettings = userRepositorySettings
         $repositorySettings.withLock { $0 = normalizedSettings }
         $userRepositorySettings.withLock { $0 = state.userSettings }
-        if previousUserSettings != state.userSettings {
-          let logger = SupaLogger("Settings")
-          for conflict in AppShortcuts.userOverrideConflicts(in: state.userSettings.customCommands) {
-            logger.warning(
-              "shortcut_conflict reason=userOverride app_action=\"\(conflict.appActionTitle)\" "
-                + "app_shortcut=\(conflict.appShortcutDisplay) custom_command=\"\(conflict.commandTitle)\" "
-                + "custom_shortcut=\(conflict.commandShortcutDisplay) result=customOverride"
-            )
-          }
-        }
         return .send(.delegate(.settingsChanged(rootURL)))
 
       case .delegate:

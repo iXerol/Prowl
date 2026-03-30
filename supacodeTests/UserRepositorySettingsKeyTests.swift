@@ -97,4 +97,35 @@ struct UserRepositorySettingsKeyTests {
     let decoded = try JSONDecoder().decode(UserRepositorySettings.self, from: localData)
     #expect(decoded == customSettings)
   }
+
+  @Test(.dependencies) func savePersistsMoreThanThreeCustomCommands() throws {
+    let localStorage = RepositoryLocalSettingsTestStorage()
+    let rootURL = URL(fileURLWithPath: "/tmp/repo")
+    let localURL = SupacodePaths.userRepositorySettingsURL(for: rootURL)
+
+    let commands = (0..<5).map { index in
+      UserCustomCommand(
+        title: "Command \(index + 1)",
+        systemImage: "terminal",
+        command: "echo \(index + 1)",
+        execution: .shellScript,
+        shortcut: nil
+      )
+    }
+    let customSettings = UserRepositorySettings(customCommands: commands)
+
+    withDependencies {
+      $0.repositoryLocalSettingsStorage = localStorage.storage
+    } operation: {
+      @Shared(.userRepositorySettings(rootURL)) var settings: UserRepositorySettings
+      $settings.withLock {
+        $0 = customSettings
+      }
+    }
+
+    let localData = try #require(localStorage.data(at: localURL))
+    let decoded = try JSONDecoder().decode(UserRepositorySettings.self, from: localData)
+    #expect(decoded.customCommands.count == 5)
+    #expect(decoded == customSettings)
+  }
 }
