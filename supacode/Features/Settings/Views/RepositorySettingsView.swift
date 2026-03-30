@@ -331,7 +331,7 @@ struct RepositorySettingsView: View {
           }
         }
       }
-      .frame(minHeight: 220, maxHeight: 300)
+      .frame(height: 300)
 
       HStack(spacing: 8) {
         Button {
@@ -726,9 +726,6 @@ struct RepositorySettingsView: View {
 
   private func dismissIconPicker() {
     iconPickerCommandID = nil
-    Task { @MainActor in
-      NSApp.keyWindow?.makeFirstResponder(nil)
-    }
   }
 
   private func scriptPlaceholder(for execution: UserCustomCommandExecution) -> String {
@@ -848,7 +845,18 @@ struct RepositorySettingsView: View {
     let current = commandsBinding.wrappedValue
     let next = UserRepositorySettings.normalizedCommands(current + [.default(index: current.count)])
     commandsBinding.wrappedValue = next
-    selectedCustomCommandID = next.last?.id
+    guard let commandID = next.last?.id else {
+      selectedCustomCommandID = nil
+      editingNameCommandID = nil
+      focusedNameEditorCommandID = nil
+      return
+    }
+    selectedCustomCommandID = commandID
+    editingNameCommandID = commandID
+    focusedNameEditorCommandID = commandID
+    iconPickerCommandID = nil
+    commandEditorCommandID = nil
+    recordingCustomCommandID = nil
   }
 
   private func removeSelectedCustomCommand() {
