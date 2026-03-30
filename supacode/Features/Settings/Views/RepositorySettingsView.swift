@@ -333,9 +333,11 @@ struct RepositorySettingsView: View {
           }
         }
       }
-      .frame(minHeight: 300, idealHeight: 300, maxHeight: 300)
-      .clipped()
-      .scrollDisabled(false)
+      .frame(
+        minHeight: customCommandsTableHeight,
+        idealHeight: customCommandsTableHeight,
+        maxHeight: customCommandsTableHeight
+      )
 
       HStack(spacing: 8) {
         Button {
@@ -1088,6 +1090,12 @@ struct RepositorySettingsView: View {
         }
       }
     )
+  }
+
+  private var customCommandsTableHeight: CGFloat {
+    let rowHeight: CGFloat = 44
+    let headerHeight: CGFloat = 30
+    return max(220, headerHeight + (CGFloat(store.userSettings.customCommands.count) * rowHeight))
   }
 }
 
