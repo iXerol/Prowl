@@ -3,6 +3,12 @@ import ComposableArchitecture
 import SwiftUI
 
 struct ShortcutsSettingsView: View {
+  private enum ShortcutTableLayout {
+    static let statusColumnWidth: CGFloat = 72
+    static let shortcutColumnWidth: CGFloat = 220
+    static let actionColumnWidth: CGFloat = 16
+  }
+
   @Bindable var store: StoreOf<SettingsFeature>
 
   @State private var searchText = ""
@@ -49,11 +55,11 @@ struct ShortcutsSettingsView: View {
         Text("Command")
           .frame(maxWidth: .infinity, alignment: .leading)
         Text("Status")
-          .frame(width: 72, alignment: .leading)
+          .frame(width: ShortcutTableLayout.statusColumnWidth, alignment: .leading)
         Text("Shortcut")
-          .frame(width: 220, alignment: .leading)
+          .frame(width: ShortcutTableLayout.shortcutColumnWidth, alignment: .leading)
         Color.clear
-          .frame(width: 16, height: 1)
+          .frame(width: ShortcutTableLayout.actionColumnWidth, height: 1)
       }
       .font(.caption.weight(.semibold))
       .foregroundStyle(.secondary)
@@ -141,7 +147,7 @@ struct ShortcutsSettingsView: View {
           .frame(maxWidth: .infinity, alignment: .leading)
 
         sourceChip(source)
-          .frame(width: 72, alignment: .leading)
+          .frame(width: ShortcutTableLayout.statusColumnWidth, alignment: .leading)
 
         shortcutRecorderField(
           commandID: command.id,
@@ -149,7 +155,7 @@ struct ShortcutsSettingsView: View {
           isRecording: isRecording,
           isHovering: isHoveringRecorder
         )
-        .frame(width: 220, alignment: .leading)
+        .frame(width: ShortcutTableLayout.shortcutColumnWidth, alignment: .leading)
 
         if hasOverride {
           Button {
@@ -165,7 +171,7 @@ struct ShortcutsSettingsView: View {
           .accessibilityLabel("Reset shortcut to default")
         } else {
           Color.clear
-            .frame(width: 16, height: 16)
+            .frame(width: ShortcutTableLayout.actionColumnWidth, height: ShortcutTableLayout.actionColumnWidth)
         }
       }
 
@@ -273,15 +279,23 @@ struct ShortcutsSettingsView: View {
     let isDefault = source == .appDefault
     let label = isDefault ? "Default" : "Defined"
 
-    return Text(label)
-      .font(.caption2.monospaced())
-      .padding(.horizontal, 8)
-      .padding(.vertical, 3)
-      .background(
-        Capsule()
-          .fill(isDefault ? Color(nsColor: .quaternaryLabelColor).opacity(0.25) : Color.accentColor.opacity(0.2))
-      )
-      .foregroundStyle(isDefault ? AnyShapeStyle(.secondary) : AnyShapeStyle(Color.accentColor))
+    return ZStack {
+      Capsule()
+        .fill(isDefault ? Color(nsColor: .quaternaryLabelColor).opacity(0.25) : Color.accentColor.opacity(0.2))
+
+      Text(label)
+        .font(.caption2.monospaced())
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+        .padding(.horizontal, 6)
+    }
+    .frame(maxWidth: .infinity)
+    .frame(height: 24)
+    .foregroundStyle(isDefault ? AnyShapeStyle(.secondary) : AnyShapeStyle(Color.accentColor))
+    .overlay(
+      Capsule()
+        .strokeBorder(isDefault ? Color(nsColor: .separatorColor) : Color.accentColor.opacity(0.35), lineWidth: 1)
+    )
   }
 
   private func commands(for group: ShortcutGroup) -> [KeybindingCommandSchema] {
