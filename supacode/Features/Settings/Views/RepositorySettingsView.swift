@@ -402,7 +402,7 @@ struct RepositorySettingsView: View {
           get: { iconPickerCommandID == command.id },
           set: { isPresented in
             if !isPresented {
-              closePopoverAndRefocusName(for: command.id)
+              closePopoverAndRestoreCommandFocus(for: command.id)
             }
           }
         ),
@@ -476,7 +476,7 @@ struct RepositorySettingsView: View {
           get: { commandEditorCommandID == command.id },
           set: { isPresented in
             if !isPresented {
-              closePopoverAndRefocusName(for: command.id)
+              closePopoverAndRestoreCommandFocus(for: command.id)
             }
           }
         ),
@@ -673,7 +673,7 @@ struct RepositorySettingsView: View {
           ForEach(Self.symbolPresets, id: \.self) { symbol in
             Button {
               command.wrappedValue.systemImage = symbol
-              closePopoverAndRefocusName(for: commandID)
+              closePopoverAndRestoreCommandFocus(for: commandID)
             } label: {
               Image(systemName: symbol)
                 .frame(width: 24, height: 24)
@@ -752,7 +752,7 @@ struct RepositorySettingsView: View {
 
   private func toggleIconEditor(for commandID: UserCustomCommand.ID) {
     if iconPickerCommandID == commandID {
-      closePopoverAndRefocusName(for: commandID)
+      closePopoverAndRestoreCommandFocus(for: commandID)
       return
     }
     iconPickerCommandID = commandID
@@ -765,7 +765,7 @@ struct RepositorySettingsView: View {
 
   private func toggleCommandEditor(for commandID: UserCustomCommand.ID) {
     if commandEditorCommandID == commandID {
-      closePopoverAndRefocusName(for: commandID)
+      closePopoverAndRestoreCommandFocus(for: commandID)
       return
     }
     commandEditorCommandID = commandID
@@ -791,7 +791,7 @@ struct RepositorySettingsView: View {
     focusedNameEditorCommandID = nil
   }
 
-  private func closePopoverAndRefocusName(for commandID: UserCustomCommand.ID) {
+  private func closePopoverAndRestoreCommandFocus(for commandID: UserCustomCommand.ID) {
     popoverRefocusTask?.cancel()
 
     var transaction = Transaction()
@@ -801,7 +801,7 @@ struct RepositorySettingsView: View {
       commandEditorCommandID = nil
     }
     focusCustomCommandsArea()
-    scheduleNameRefocus(for: commandID)
+    scheduleCommandFocusRestore(for: commandID)
   }
 
   private func focusCustomCommandsArea() {
@@ -817,7 +817,7 @@ struct RepositorySettingsView: View {
     _ = window.makeFirstResponder(nil)
   }
 
-  private func scheduleNameRefocus(for commandID: UserCustomCommand.ID) {
+  private func scheduleCommandFocusRestore(for commandID: UserCustomCommand.ID) {
     popoverRefocusTask = Task { @MainActor in
       await Task.yield()
       guard !Task.isCancelled else {
@@ -834,7 +834,7 @@ struct RepositorySettingsView: View {
       transaction.animation = nil
       withTransaction(transaction) {
         selectCustomCommand(commandID)
-        beginNameEditing(for: commandID)
+        endNameEditing()
       }
     }
   }
