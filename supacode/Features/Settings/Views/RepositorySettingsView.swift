@@ -14,8 +14,8 @@ struct RepositorySettingsView: View {
   @State private var pendingShortcutConflict: CustomCommandShortcutConflict?
   @State private var pendingShortcut: PendingCustomShortcut?
   @State private var iconPickerCommandID: UserCustomCommand.ID?
-  @State private var iconPickerReturnResponder: NSResponder?
   @State private var customCommandsFocusAnchor: NSView?
+  @State private var popoverRefocusTask: Task<Void, Never>?
   @State private var commandEditorCommandID: UserCustomCommand.ID?
   @State private var editingNameCommandID: UserCustomCommand.ID?
   @FocusState private var focusedNameEditorCommandID: UserCustomCommand.ID?
@@ -283,6 +283,8 @@ struct RepositorySettingsView: View {
     }
     .onDisappear {
       stopRecorderMonitor()
+      popoverRefocusTask?.cancel()
+      popoverRefocusTask = nil
       focusedNameEditorCommandID = nil
     }
     .alert(
@@ -400,13 +402,13 @@ struct RepositorySettingsView: View {
           get: { iconPickerCommandID == command.id },
           set: { isPresented in
             if !isPresented {
-              dismissIconPicker()
+              closePopoverAndRefocusName(for: command.id)
             }
           }
         ),
         arrowEdge: .bottom
       ) {
-        iconEditorPopover(for: binding)
+        iconEditorPopover(for: binding, commandID: command.id)
       }
     } else {
       InlineEditableCellButton(
@@ -474,7 +476,7 @@ struct RepositorySettingsView: View {
           get: { commandEditorCommandID == command.id },
           set: { isPresented in
             if !isPresented {
-              commandEditorCommandID = nil
+              closePopoverAndRefocusName(for: command.id)
             }
           }
         ),
@@ -644,7 +646,10 @@ struct RepositorySettingsView: View {
     return firstLine.isEmpty ? "Click to set command script" : firstLine
   }
 
-  private func iconEditorPopover(for command: Binding<UserCustomCommand>) -> some View {
+  private func iconEditorPopover(
+    for command: Binding<UserCustomCommand>,
+    commandID: UserCustomCommand.ID
+  ) -> some View {
     VStack(alignment: .leading, spacing: 10) {
       Text("Icon")
         .font(.headline)
@@ -668,7 +673,7 @@ struct RepositorySettingsView: View {
           ForEach(Self.symbolPresets, id: \.self) { symbol in
             Button {
               command.wrappedValue.systemImage = symbol
-              dismissIconPicker()
+              closePopoverAndRefocusName(for: commandID)
             } label: {
               Image(systemName: symbol)
                 .frame(width: 24, height: 24)
@@ -747,10 +752,9 @@ struct RepositorySettingsView: View {
 
   private func toggleIconEditor(for commandID: UserCustomCommand.ID) {
     if iconPickerCommandID == commandID {
-      dismissIconPicker()
+      closePopoverAndRefocusName(for: commandID)
       return
     }
-    iconPickerReturnResponder = NSApp.keyWindow?.firstResponder as? NSResponder
     iconPickerCommandID = commandID
     commandEditorCommandID = nil
     endNameEditing()
@@ -761,7 +765,7 @@ struct RepositorySettingsView: View {
 
   private func toggleCommandEditor(for commandID: UserCustomCommand.ID) {
     if commandEditorCommandID == commandID {
-      commandEditorCommandID = nil
+      closePopoverAndRefocusName(for: commandID)
       return
     }
     commandEditorCommandID = commandID
@@ -787,35 +791,51 @@ struct RepositorySettingsView: View {
     focusedNameEditorCommandID = nil
   }
 
-  private func dismissIconPicker() {
-    iconPickerCommandID = nil
-    Task { @MainActor in
+  private func closePopoverAndRefocusName(for commandID: UserCustomCommand.ID) {
+    popoverRefocusTask?.cancel()
+
+    var transaction = Transaction()
+    transaction.animation = nil
+    withTransaction(transaction) {
+      iconPickerCommandID = nil
+      commandEditorCommandID = nil
+    }
+    focusCustomCommandsArea()
+    scheduleNameRefocus(for: commandID)
+  }
+
+  private func focusCustomCommandsArea() {
+    guard let window = NSApp.keyWindow else {
+      return
+    }
+    if let customCommandsFocusAnchor,
+      customCommandsFocusAnchor.window === window
+    {
+      _ = window.makeFirstResponder(customCommandsFocusAnchor)
+      return
+    }
+    _ = window.makeFirstResponder(nil)
+  }
+
+  private func scheduleNameRefocus(for commandID: UserCustomCommand.ID) {
+    popoverRefocusTask = Task { @MainActor in
       await Task.yield()
-      guard iconPickerCommandID == nil else {
+      guard !Task.isCancelled else {
         return
       }
-      guard let window = NSApp.keyWindow else {
-        iconPickerReturnResponder = nil
+      guard iconPickerCommandID == nil, commandEditorCommandID == nil else {
         return
       }
-
-      let preferredResponder = iconPickerReturnResponder
-      iconPickerReturnResponder = nil
-
-      if let preferredResponder,
-        window.makeFirstResponder(preferredResponder)
-      {
+      guard store.userSettings.customCommands.contains(where: { $0.id == commandID }) else {
         return
       }
 
-      if let customCommandsFocusAnchor,
-        customCommandsFocusAnchor.window === window,
-        window.makeFirstResponder(customCommandsFocusAnchor)
-      {
-        return
+      var transaction = Transaction()
+      transaction.animation = nil
+      withTransaction(transaction) {
+        selectCustomCommand(commandID)
+        beginNameEditing(for: commandID)
       }
-
-      _ = window.makeFirstResponder(nil)
     }
   }
 
