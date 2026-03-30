@@ -43,8 +43,14 @@ struct KeybindingSchemaTests {
     #expect(commandIDs.contains("select_all_canvas_cards"))
 
     let commandPalette = schema.commands.first(where: { $0.id == "command_palette" })
+    let renameBranch = schema.commands.first(where: { $0.id == "rename_branch" })
+    let selectAllCanvasCards = schema.commands.first(where: { $0.id == "select_all_canvas_cards" })
     #expect(commandPalette?.allowUserOverride == false)
     #expect(commandPalette?.conflictPolicy == .disallowUserOverride)
+    #expect(renameBranch?.allowUserOverride == true)
+    #expect(renameBranch?.conflictPolicy == .localOnly)
+    #expect(selectAllCanvasCards?.allowUserOverride == true)
+    #expect(selectAllCanvasCards?.conflictPolicy == .localOnly)
   }
 
   @Test func resolverAppliesUserOverrideOverMigratedOverride() {

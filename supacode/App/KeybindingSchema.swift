@@ -379,7 +379,7 @@ extension KeybindingSchemaDocument {
           title: binding.title,
           scope: .init(binding.scope),
           platform: .macOS,
-          allowUserOverride: binding.scope == .configurableAppAction,
+          allowUserOverride: binding.scope != .systemFixedAppAction,
           conflictPolicy: binding.scope.conflictPolicy,
           defaultBinding: binding.shortcut.keybinding
         )

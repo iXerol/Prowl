@@ -515,6 +515,7 @@ private enum ShortcutGroup: String, CaseIterable, Identifiable {
     switch commandID {
     case AppShortcuts.CommandID.selectNextWorktree,
       AppShortcuts.CommandID.selectPreviousWorktree,
+      AppShortcuts.CommandID.renameBranch,
       AppShortcuts.CommandID.selectWorktree1,
       AppShortcuts.CommandID.selectWorktree2,
       AppShortcuts.CommandID.selectWorktree3,
@@ -531,6 +532,7 @@ private enum ShortcutGroup: String, CaseIterable, Identifiable {
       AppShortcuts.CommandID.stopScript,
       AppShortcuts.CommandID.showDiff,
       AppShortcuts.CommandID.toggleCanvas,
+      AppShortcuts.CommandID.selectAllCanvasCards,
       AppShortcuts.CommandID.archivedWorktrees:
       return .scripts
 
