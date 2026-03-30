@@ -358,7 +358,7 @@ struct RepositorySettingsView: View {
           .font(.caption)
           .foregroundStyle(.red)
       } else {
-        Text("Select a row, then click cells to edit icon, name, command, and shortcut inline.")
+        Text("Click cells to edit icon, name, command, and shortcut inline.")
           .font(.caption)
           .foregroundStyle(.secondary)
       }
@@ -367,10 +367,11 @@ struct RepositorySettingsView: View {
 
   @ViewBuilder
   private func customCommandIconCell(_ command: UserCustomCommand) -> some View {
-    if selectedCustomCommandID == command.id,
-      let binding = bindingForCustomCommand(id: command.id)
-    {
-      InlineEditableCellButton(isActive: iconPickerCommandID == command.id) {
+    if let binding = bindingForCustomCommand(id: command.id) {
+      InlineEditableCellButton(
+        isActive: iconPickerCommandID == command.id
+      ) {
+        selectCustomCommand(command.id)
         toggleIconEditor(for: command.id)
       } label: {
         Image(systemName: binding.wrappedValue.resolvedSystemImage)
@@ -392,50 +393,53 @@ struct RepositorySettingsView: View {
         iconEditorPopover(for: binding)
       }
     } else {
-      Image(systemName: command.resolvedSystemImage)
-        .foregroundStyle(.secondary)
-        .frame(width: 16, alignment: .center)
-        .accessibilityHidden(true)
+      InlineEditableCellButton {
+        selectCustomCommand(command.id)
+      } label: {
+        Image(systemName: command.resolvedSystemImage)
+          .foregroundStyle(.secondary)
+          .frame(width: 16, alignment: .center)
+          .accessibilityHidden(true)
+      }
     }
   }
 
   @ViewBuilder
   private func customCommandNameCell(_ command: UserCustomCommand) -> some View {
-    if selectedCustomCommandID == command.id,
+    let isSelected = selectedCustomCommandID == command.id
+    if isSelected,
+      editingNameCommandID == command.id,
       let binding = bindingForCustomCommand(id: command.id)
     {
-      if editingNameCommandID == command.id {
-        InlineEditableFieldContainer(isActive: true) {
-          TextField("Name", text: binding.title)
-            .textFieldStyle(.plain)
-            .focused($focusedNameEditorCommandID, equals: command.id)
-            .onSubmit {
-              endNameEditing()
-            }
-        }
-        .onAppear {
-          focusedNameEditorCommandID = command.id
-        }
-      } else {
-        InlineEditableCellButton {
-          beginNameEditing(for: command.id)
-        } label: {
-          Text(binding.wrappedValue.resolvedTitle)
-            .lineLimit(1)
-        }
+      InlineEditableFieldContainer(isActive: true) {
+        TextField("Name", text: binding.title)
+          .textFieldStyle(.plain)
+          .focused($focusedNameEditorCommandID, equals: command.id)
+          .onSubmit {
+            endNameEditing()
+          }
+      }
+      .onAppear {
+        focusedNameEditorCommandID = command.id
       }
     } else {
-      Text(command.resolvedTitle)
-        .lineLimit(1)
+      InlineEditableCellButton {
+        selectCustomCommand(command.id)
+        beginNameEditing(for: command.id)
+      } label: {
+        Text(bindingForCustomCommand(id: command.id)?.wrappedValue.resolvedTitle ?? command.resolvedTitle)
+          .lineLimit(1)
+      }
     }
   }
 
   @ViewBuilder
   private func customCommandCell(_ command: UserCustomCommand) -> some View {
-    if selectedCustomCommandID == command.id,
-      let binding = bindingForCustomCommand(id: command.id)
-    {
-      InlineEditableCellButton(isActive: commandEditorCommandID == command.id) {
+    if let binding = bindingForCustomCommand(id: command.id) {
+      InlineEditableCellButton(
+        isActive: commandEditorCommandID == command.id
+      ) {
+        selectCustomCommand(command.id)
         toggleCommandEditor(for: command.id)
       } label: {
         VStack(alignment: .leading, spacing: 2) {
@@ -461,12 +465,16 @@ struct RepositorySettingsView: View {
       }
       .help("Shell runs in a new tab. Terminal sends input to the focused terminal.")
     } else {
-      VStack(alignment: .leading, spacing: 2) {
-        Text(inlineCommandTitle(for: command.execution))
-          .font(.caption)
-          .foregroundStyle(.secondary)
-        Text(inlineCommandScriptPreview(for: command.command))
-          .lineLimit(1)
+      InlineEditableCellButton {
+        selectCustomCommand(command.id)
+      } label: {
+        VStack(alignment: .leading, spacing: 2) {
+          Text(inlineCommandTitle(for: command.execution))
+            .font(.caption)
+            .foregroundStyle(.secondary)
+          Text(inlineCommandScriptPreview(for: command.command))
+            .lineLimit(1)
+        }
       }
     }
   }
@@ -477,28 +485,28 @@ struct RepositorySettingsView: View {
     let shortcutDisplay = resolvedBinding?.display ?? "Unassigned"
     let isRecording = recordingCustomCommandID == command.id
 
-    if selectedCustomCommandID == command.id {
-      InlineEditableCellButton(isActive: isRecording) {
-        toggleRecording(for: command.id)
-      } label: {
-        Text(isRecording ? "Recording…" : shortcutDisplay)
-          .font(.body.monospaced())
-          .foregroundStyle(isRecording ? Color.accentColor : (resolvedBinding == nil ? .secondary : .primary))
-          .lineLimit(1)
-      }
-      .contextMenu {
-        if command.shortcut != nil {
-          Button("Clear Shortcut") {
-            clearShortcut(for: command.id)
-          }
+    InlineEditableCellButton(isActive: isRecording) {
+      selectCustomCommand(command.id)
+      toggleRecording(for: command.id)
+    } label: {
+      Text(isRecording ? "Recording…" : shortcutDisplay)
+        .font(.body.monospaced())
+        .foregroundStyle(isRecording ? Color.accentColor : (resolvedBinding == nil ? .secondary : .primary))
+        .lineLimit(1)
+    }
+    .contextMenu {
+      if command.shortcut != nil {
+        Button("Clear Shortcut") {
+          clearShortcut(for: command.id)
         }
       }
-      .help(isRecording ? "Recording shortcut. Press Esc to cancel." : "Click to record a shortcut.")
-    } else {
-      Text(shortcutDisplay)
-        .font(.body.monospaced())
-        .foregroundStyle(resolvedBinding == nil ? .secondary : .primary)
-        .lineLimit(1)
+    }
+    .help(isRecording ? "Recording shortcut. Press Esc to cancel." : "Click to record a shortcut.")
+  }
+
+  private func selectCustomCommand(_ commandID: UserCustomCommand.ID) {
+    if selectedCustomCommandID != commandID {
+      selectedCustomCommandID = commandID
     }
   }
 
@@ -965,10 +973,6 @@ private struct InlineEditableCellButton<Label: View>: View {
     .onHover { hovering in
       isHovering = hovering
     }
-    .background(
-      RoundedRectangle(cornerRadius: 6)
-        .fill(Color(nsColor: .textBackgroundColor))
-    )
     .overlay {
       RoundedRectangle(cornerRadius: 6)
         .strokeBorder(borderColor, lineWidth: borderWidth)
@@ -1007,14 +1011,10 @@ private struct InlineEditableFieldContainer<Content: View>: View {
     content()
       .frame(maxWidth: .infinity, alignment: .leading)
       .padding(.horizontal, 8)
-      .padding(.vertical, 6)
+      .padding(.vertical, 4)
       .onHover { hovering in
         isHovering = hovering
       }
-      .background(
-        RoundedRectangle(cornerRadius: 6)
-          .fill(Color(nsColor: .textBackgroundColor))
-      )
       .overlay {
         RoundedRectangle(cornerRadius: 6)
           .strokeBorder(borderColor, lineWidth: borderWidth)
