@@ -17,7 +17,6 @@ struct RepositorySettingsView: View {
   @State private var iconPickerReturnResponder: NSResponder?
   @State private var customCommandsFocusAnchor: NSView?
   @State private var customCommandsMeasuredRowHeight: CGFloat = 44
-  @State private var customCommandsMeasuredHeaderHeight: CGFloat = 30
   @State private var commandEditorCommandID: UserCustomCommand.ID?
   @State private var editingNameCommandID: UserCustomCommand.ID?
   @FocusState private var focusedNameEditorCommandID: UserCustomCommand.ID?
@@ -340,12 +339,10 @@ struct RepositorySettingsView: View {
         idealHeight: customCommandsTableHeight,
         maxHeight: customCommandsTableHeight
       )
-      .background {
-        TableMetricsProbe { metrics in
-          customCommandsMeasuredRowHeight = metrics.rowHeight
-          customCommandsMeasuredHeaderHeight = metrics.headerHeight
+      .onPreferenceChange(CustomCommandRowHeightPreferenceKey.self) { height in
+        if height > 0 {
+          customCommandsMeasuredRowHeight = height
         }
-        .frame(width: 0, height: 0)
       }
 
       HStack(spacing: 8) {
@@ -574,6 +571,12 @@ struct RepositorySettingsView: View {
   ) -> some View {
     content()
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+      .background {
+        GeometryReader { proxy in
+          Color.clear
+            .preference(key: CustomCommandRowHeightPreferenceKey.self, value: proxy.size.height)
+        }
+      }
       .contentShape(Rectangle())
       .onTapGesture {
         selectCustomCommand(commandID)
@@ -1104,7 +1107,7 @@ struct RepositorySettingsView: View {
   private var customCommandsTableHeight: CGFloat {
     let rowCount = CGFloat(store.userSettings.customCommands.count)
     let rowHeight = max(customCommandsMeasuredRowHeight, 1)
-    let headerHeight = max(customCommandsMeasuredHeaderHeight, 0)
+    let headerHeight: CGFloat = 32
     let contentHeight = headerHeight + (rowCount * rowHeight) + 2
     return max(220, contentHeight)
   }
@@ -1230,91 +1233,11 @@ private final class FirstResponderAnchorNSView: NSView {
   }
 }
 
-private struct TableLayoutMetrics: Equatable {
-  let rowHeight: CGFloat
-  let headerHeight: CGFloat
-}
+private struct CustomCommandRowHeightPreferenceKey: PreferenceKey {
+  static var defaultValue: CGFloat = 0
 
-private struct TableMetricsProbe: NSViewRepresentable {
-  let onResolve: (TableLayoutMetrics) -> Void
-
-  func makeNSView(context: Context) -> TableMetricsProbeNSView {
-    let view = TableMetricsProbeNSView()
-    view.onResolve = onResolve
-    view.resolveSoon()
-    return view
-  }
-
-  func updateNSView(_ nsView: TableMetricsProbeNSView, context: Context) {
-    nsView.onResolve = onResolve
-    nsView.resolveSoon()
-  }
-}
-
-private final class TableMetricsProbeNSView: NSView {
-  var onResolve: ((TableLayoutMetrics) -> Void)?
-  private var lastMetrics: TableLayoutMetrics?
-
-  override func viewDidMoveToWindow() {
-    super.viewDidMoveToWindow()
-    resolveSoon()
-  }
-
-  override func viewDidMoveToSuperview() {
-    super.viewDidMoveToSuperview()
-    resolveSoon()
-  }
-
-  func resolveSoon() {
-    DispatchQueue.main.async { [weak self] in
-      self?.resolve()
-    }
-  }
-
-  private func resolve() {
-    guard let tableView = locateTableView() else {
-      return
-    }
-    let metrics = TableLayoutMetrics(
-      rowHeight: tableView.rowHeight + tableView.intercellSpacing.height,
-      headerHeight: tableView.headerView?.frame.height ?? 0
-    )
-    guard metrics != lastMetrics else {
-      return
-    }
-    lastMetrics = metrics
-    onResolve?(metrics)
-  }
-
-  private func locateTableView() -> NSTableView? {
-    if let table = firstTableView(in: self) {
-      return table
-    }
-    var current: NSView? = self
-    while let view = current {
-      if let table = firstTableView(in: view) {
-        return table
-      }
-      current = view.superview
-    }
-    return nil
-  }
-
-  private func firstTableView(in view: NSView) -> NSTableView? {
-    if let table = view as? NSTableView {
-      return table
-    }
-    if let scrollView = view as? NSScrollView,
-      let table = scrollView.documentView as? NSTableView
-    {
-      return table
-    }
-    for subview in view.subviews {
-      if let table = firstTableView(in: subview) {
-        return table
-      }
-    }
-    return nil
+  static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+    value = max(value, nextValue())
   }
 }
 
