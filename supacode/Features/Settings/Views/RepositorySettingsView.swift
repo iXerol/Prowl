@@ -18,6 +18,7 @@ struct RepositorySettingsView: View {
   @State private var popoverRefocusTask: Task<Void, Never>?
   @State private var commandEditorCommandID: UserCustomCommand.ID?
   @State private var editingNameCommandID: UserCustomCommand.ID?
+  @State private var focusedScriptEditor: ScriptEditorFocus?
   @FocusState private var focusedNameEditorCommandID: UserCustomCommand.ID?
 
   private let keyTokenResolver = ShortcutKeyTokenResolver()
@@ -48,6 +49,13 @@ struct RepositorySettingsView: View {
     "cloud.fill",
     "tray.and.arrow.down.fill",
   ]
+
+  private enum ScriptEditorFocus: Equatable {
+    case setup
+    case archive
+    case run
+    case command(UserCustomCommand.ID)
+  }
 
   var body: some View {
     let baseRefOptions =
@@ -169,10 +177,19 @@ struct RepositorySettingsView: View {
         Section {
           ZStack(alignment: .topLeading) {
             PlainTextEditor(
-              text: settings.setupScript
+              text: settings.setupScript,
+              onFocusChange: { isFocused in
+                if isFocused {
+                  focusedScriptEditor = .setup
+                } else if focusedScriptEditor == .setup {
+                  focusedScriptEditor = nil
+                }
+              }
             )
             .frame(minHeight: 120)
-            if store.settings.setupScript.isEmpty {
+            if store.settings.setupScript.isEmpty,
+              focusedScriptEditor != .setup
+            {
               Text("claude --dangerously-skip-permissions")
                 .foregroundStyle(.secondary)
                 .padding(.leading, plainTextPlaceholderLeading)
@@ -194,10 +211,19 @@ struct RepositorySettingsView: View {
         Section {
           ZStack(alignment: .topLeading) {
             PlainTextEditor(
-              text: settings.archiveScript
+              text: settings.archiveScript,
+              onFocusChange: { isFocused in
+                if isFocused {
+                  focusedScriptEditor = .archive
+                } else if focusedScriptEditor == .archive {
+                  focusedScriptEditor = nil
+                }
+              }
             )
             .frame(minHeight: 120)
-            if store.settings.archiveScript.isEmpty {
+            if store.settings.archiveScript.isEmpty,
+              focusedScriptEditor != .archive
+            {
               Text("docker compose down")
                 .foregroundStyle(.secondary)
                 .padding(.leading, plainTextPlaceholderLeading)
@@ -219,10 +245,19 @@ struct RepositorySettingsView: View {
         Section {
           ZStack(alignment: .topLeading) {
             PlainTextEditor(
-              text: settings.runScript
+              text: settings.runScript,
+              onFocusChange: { isFocused in
+                if isFocused {
+                  focusedScriptEditor = .run
+                } else if focusedScriptEditor == .run {
+                  focusedScriptEditor = nil
+                }
+              }
             )
             .frame(minHeight: 120)
-            if store.settings.runScript.isEmpty {
+            if store.settings.runScript.isEmpty,
+              focusedScriptEditor != .run
+            {
               Text("npm run dev")
                 .foregroundStyle(.secondary)
                 .padding(.leading, plainTextPlaceholderLeading)
@@ -289,6 +324,7 @@ struct RepositorySettingsView: View {
       popoverRefocusTask?.cancel()
       popoverRefocusTask = nil
       focusedNameEditorCommandID = nil
+      focusedScriptEditor = nil
     }
     .alert(
       "Shortcut Conflict",
@@ -714,11 +750,21 @@ struct RepositorySettingsView: View {
         PlainTextEditor(
           text: command.command,
           isMonospaced: true,
-          shouldFocus: true
+          shouldFocus: true,
+          onFocusChange: { isFocused in
+            let field = ScriptEditorFocus.command(command.wrappedValue.id)
+            if isFocused {
+              focusedScriptEditor = field
+            } else if focusedScriptEditor == field {
+              focusedScriptEditor = nil
+            }
+          }
         )
         .frame(height: 140)
 
-        if command.wrappedValue.command.isEmpty {
+        if command.wrappedValue.command.isEmpty,
+          focusedScriptEditor != .command(command.wrappedValue.id)
+        {
           Text(scriptPlaceholder(for: command.wrappedValue.execution))
             .foregroundStyle(.secondary)
             .padding(.leading, plainTextPlaceholderLeading)
@@ -913,6 +959,7 @@ struct RepositorySettingsView: View {
       commandEditorCommandID = nil
       editingNameCommandID = nil
       focusedNameEditorCommandID = nil
+      focusedScriptEditor = nil
       return
     }
 
@@ -953,6 +1000,12 @@ struct RepositorySettingsView: View {
     {
       self.editingNameCommandID = nil
       focusedNameEditorCommandID = nil
+    }
+
+    if case let .command(commandID) = focusedScriptEditor,
+      !validIDs.contains(commandID)
+    {
+      focusedScriptEditor = nil
     }
   }
 

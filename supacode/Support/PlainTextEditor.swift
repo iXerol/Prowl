@@ -5,14 +5,16 @@ struct PlainTextEditor: NSViewRepresentable {
   @Binding var text: String
   var isMonospaced: Bool = false
   var shouldFocus: Bool = false
+  var onFocusChange: ((Bool) -> Void)? = nil
 
   func makeCoordinator() -> Coordinator {
     Coordinator(text: $text)
   }
 
   func makeNSView(context: Context) -> NSScrollView {
-    let textView = NSTextView(frame: .zero)
+    let textView = FocusAwareTextView(frame: .zero)
     textView.delegate = context.coordinator
+    textView.onFocusChange = onFocusChange
     textView.drawsBackground = false
     textView.isRichText = false
     textView.importsGraphics = false
@@ -42,6 +44,9 @@ struct PlainTextEditor: NSViewRepresentable {
 
   func updateNSView(_ nsView: NSScrollView, context: Context) {
     guard let textView = nsView.documentView as? NSTextView else { return }
+    if let focusAwareTextView = textView as? FocusAwareTextView {
+      focusAwareTextView.onFocusChange = onFocusChange
+    }
     if textView.string != text {
       textView.string = text
     }
@@ -73,6 +78,26 @@ struct PlainTextEditor: NSViewRepresentable {
     func textDidChange(_ notification: Notification) {
       guard let textView = notification.object as? NSTextView else { return }
       text = textView.string
+    }
+  }
+
+  final class FocusAwareTextView: NSTextView {
+    var onFocusChange: ((Bool) -> Void)?
+
+    override func becomeFirstResponder() -> Bool {
+      let didBecomeFirstResponder = super.becomeFirstResponder()
+      if didBecomeFirstResponder {
+        onFocusChange?(true)
+      }
+      return didBecomeFirstResponder
+    }
+
+    override func resignFirstResponder() -> Bool {
+      let didResignFirstResponder = super.resignFirstResponder()
+      if didResignFirstResponder {
+        onFocusChange?(false)
+      }
+      return didResignFirstResponder
     }
   }
 }
