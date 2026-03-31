@@ -168,10 +168,6 @@ struct RepositorySettingsView: View {
       if store.showsSetupScriptSettings {
         Section {
           ZStack(alignment: .topLeading) {
-            PlainTextEditor(
-              text: settings.setupScript
-            )
-            .frame(minHeight: 120)
             if store.settings.setupScript.isEmpty {
               Text("claude --dangerously-skip-permissions")
                 .foregroundStyle(.secondary)
@@ -180,6 +176,10 @@ struct RepositorySettingsView: View {
                 .font(.body)
                 .allowsHitTesting(false)
             }
+            PlainTextEditor(
+              text: settings.setupScript
+            )
+            .frame(minHeight: 120)
           }
         } header: {
           VStack(alignment: .leading, spacing: 4) {
@@ -193,10 +193,6 @@ struct RepositorySettingsView: View {
       if store.showsArchiveScriptSettings {
         Section {
           ZStack(alignment: .topLeading) {
-            PlainTextEditor(
-              text: settings.archiveScript
-            )
-            .frame(minHeight: 120)
             if store.settings.archiveScript.isEmpty {
               Text("docker compose down")
                 .foregroundStyle(.secondary)
@@ -205,6 +201,10 @@ struct RepositorySettingsView: View {
                 .font(.body)
                 .allowsHitTesting(false)
             }
+            PlainTextEditor(
+              text: settings.archiveScript
+            )
+            .frame(minHeight: 120)
           }
         } header: {
           VStack(alignment: .leading, spacing: 4) {
@@ -218,10 +218,6 @@ struct RepositorySettingsView: View {
       if store.showsRunScriptSettings {
         Section {
           ZStack(alignment: .topLeading) {
-            PlainTextEditor(
-              text: settings.runScript
-            )
-            .frame(minHeight: 120)
             if store.settings.runScript.isEmpty {
               Text("npm run dev")
                 .foregroundStyle(.secondary)
@@ -230,6 +226,10 @@ struct RepositorySettingsView: View {
                 .font(.body)
                 .allowsHitTesting(false)
             }
+            PlainTextEditor(
+              text: settings.runScript
+            )
+            .frame(minHeight: 120)
           }
         } header: {
           VStack(alignment: .leading, spacing: 4) {
@@ -711,13 +711,6 @@ struct RepositorySettingsView: View {
       .pickerStyle(.segmented)
 
       ZStack(alignment: .topLeading) {
-        PlainTextEditor(
-          text: command.command,
-          isMonospaced: true,
-          shouldFocus: true
-        )
-        .frame(height: 140)
-
         if command.wrappedValue.command.isEmpty {
           Text(scriptPlaceholder(for: command.wrappedValue.execution))
             .foregroundStyle(.secondary)
@@ -726,6 +719,13 @@ struct RepositorySettingsView: View {
             .font(.body.monospaced())
             .allowsHitTesting(false)
         }
+
+        PlainTextEditor(
+          text: command.command,
+          isMonospaced: true,
+          shouldFocus: true
+        )
+        .frame(height: 140)
       }
 
       Text(scriptDescription(for: command.wrappedValue.execution))
