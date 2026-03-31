@@ -31,7 +31,8 @@ struct AppFeatureTerminalLayoutRestoreTests {
     store.exhaustivity = .off
 
     await store.send(.repositories(.delegate(.repositoriesChanged([repository])))) {
-      $0.didAttemptTerminalLayoutRestore = true
+      $0.launchRestoreMode = .lastFocusedWorktree
+      $0.repositories.selection = nil
     }
     await store.finish()
 
@@ -72,6 +73,60 @@ struct AppFeatureTerminalLayoutRestoreTests {
         return false
       } == false
     )
+  }
+
+  @Test(.dependencies) func restoreOnlyTriggersOnce() async {
+    let worktree = makeWorktree()
+    let repository = makeRepository(worktrees: [worktree])
+    var repositoriesState = RepositoriesFeature.State(repositories: [repository])
+    repositoriesState.snapshotPersistencePhase = .active
+    var settings = SettingsFeature.State()
+    settings.restoreTerminalLayoutOnLaunch = true
+    let sentCommands = LockIsolated<[TerminalClient.Command]>([])
+
+    let store = TestStore(
+      initialState: AppFeature.State(repositories: repositoriesState, settings: settings)
+    ) {
+      AppFeature()
+    } withDependencies: {
+      $0.terminalClient.send = { command in
+        sentCommands.withValue { $0.append(command) }
+      }
+      $0.worktreeInfoWatcher.send = { _ in }
+    }
+    store.exhaustivity = .off
+
+    // First repositoriesChanged triggers restore and flips mode
+    await store.send(.repositories(.delegate(.repositoriesChanged([repository])))) {
+      $0.launchRestoreMode = .lastFocusedWorktree
+      $0.repositories.selection = nil
+    }
+    await store.finish()
+
+    sentCommands.withValue { $0.removeAll() }
+
+    // Second repositoriesChanged should NOT trigger restore
+    await store.send(.repositories(.delegate(.repositoriesChanged([repository]))))
+    await store.finish()
+
+    #expect(
+      sentCommands.value.contains {
+        if case .restoreLayoutSnapshot = $0 {
+          return true
+        }
+        return false
+      } == false
+    )
+  }
+
+  @Test(.dependencies) func layoutRestoredEventSelectsWorktree() async {
+    let store = TestStore(initialState: AppFeature.State()) {
+      AppFeature()
+    }
+    store.exhaustivity = .off
+
+    await store.send(.terminalEvent(.layoutRestored(selectedWorktreeID: "/tmp/repo/wt-1")))
+    await store.receive(\.repositories.selectWorktree)
   }
 
   @Test(.dependencies) func scenePhaseInactiveSavesLayoutSnapshot() async {

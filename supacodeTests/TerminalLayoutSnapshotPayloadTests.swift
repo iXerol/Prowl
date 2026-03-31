@@ -180,6 +180,41 @@ struct TerminalLayoutSnapshotPayloadTests {
 
     #expect(TerminalLayoutSnapshotPayload.decodeValidated(from: data) == nil)
   }
+
+  @Test func decodeValidatedRoundTripsSelectedWorktreeID() throws {
+    let payload = TerminalLayoutSnapshotPayload(
+      selectedWorktreeID: "wt-1",
+      worktrees: [makeWorktree(worktreeID: "wt-1")]
+    )
+    let data = try JSONEncoder().encode(payload)
+
+    let decoded = TerminalLayoutSnapshotPayload.decodeValidated(from: data)
+    #expect(decoded == payload)
+    #expect(decoded?.selectedWorktreeID == "wt-1")
+  }
+
+  @Test func decodeValidatedAcceptsNilSelectedWorktreeID() throws {
+    let payload = TerminalLayoutSnapshotPayload(
+      selectedWorktreeID: nil,
+      worktrees: [makeWorktree(worktreeID: "wt-1")]
+    )
+    let data = try JSONEncoder().encode(payload)
+
+    let decoded = TerminalLayoutSnapshotPayload.decodeValidated(from: data)
+    #expect(decoded == payload)
+    #expect(decoded?.selectedWorktreeID == nil)
+  }
+
+  @Test func decodeValidatedRejectsSelectedWorktreeIDNotInWorktrees() throws {
+    let payload = TerminalLayoutSnapshotPayload(
+      version: TerminalLayoutSnapshotPayload.currentVersion,
+      selectedWorktreeID: "wt-missing",
+      worktrees: [makeWorktree(worktreeID: "wt-1")]
+    )
+    let data = try JSONEncoder().encode(payload)
+
+    #expect(TerminalLayoutSnapshotPayload.decodeValidated(from: data) == nil)
+  }
 }
 
 private func makePayload(
