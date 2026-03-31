@@ -1,3 +1,4 @@
+import Foundation
 import Observation
 import Sharing
 
@@ -404,6 +405,22 @@ final class WorktreeTerminalManager {
     terminalLogger.info("[LayoutRestore] persist: saving \(payload.worktrees.count) worktree(s)")
     let saved = await layoutPersistence.saveSnapshot(payload)
     terminalLogger.info("[LayoutRestore] persist: save result=\(saved)")
+  }
+
+  func persistLayoutSnapshotSync() {
+    guard let payload = makeLayoutSnapshotPayload() else {
+      terminalLogger.info("[LayoutRestore] persistSync: no active states, clearing snapshot")
+      discardTerminalLayoutSnapshot(at: SupacodePaths.terminalLayoutSnapshotURL, fileManager: .default)
+      return
+    }
+    terminalLogger.info("[LayoutRestore] persistSync: saving \(payload.worktrees.count) worktree(s)")
+    let saved = saveTerminalLayoutSnapshot(
+      payload,
+      at: SupacodePaths.terminalLayoutSnapshotURL,
+      cacheDirectory: SupacodePaths.cacheDirectory,
+      fileManager: .default
+    )
+    terminalLogger.info("[LayoutRestore] persistSync: save result=\(saved)")
   }
 
   func restoreLayoutSnapshot(from worktrees: [Worktree]) async {
