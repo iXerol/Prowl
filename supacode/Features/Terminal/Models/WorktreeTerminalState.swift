@@ -609,12 +609,10 @@ final class WorktreeTerminalState {
       return false
     }
 
-    var restoredTabs: [TerminalTabItem] = []
-    var restoredTrees: [TerminalTabID: SplitTree<GhosttySurfaceView>] = [:]
-    var restoredFocusedSurfaceIDs: [TerminalTabID: UUID] = [:]
+    // Validate snapshot structure before creating any surfaces.
+    var validatedTabs: [(tabID: TerminalTabID, snapshotTab: TerminalLayoutSnapshotPayload.SnapshotTab)] = []
     var seenTabIDs: Set<TerminalTabID> = []
-
-    for (index, snapshotTab) in snapshot.tabs.enumerated() {
+    for snapshotTab in snapshot.tabs {
       guard let tabUUID = UUID(uuidString: snapshotTab.tabID) else {
         terminalStateLogger.warning("[LayoutRestore] applySnapshot: invalid tab UUID \(snapshotTab.tabID)")
         return false
@@ -624,43 +622,58 @@ final class WorktreeTerminalState {
         terminalStateLogger.warning("[LayoutRestore] applySnapshot: duplicate tab ID \(snapshotTab.tabID)")
         return false
       }
-      terminalStateLogger.info("[LayoutRestore] applySnapshot: restoring tab[\(index)] id=\(snapshotTab.tabID)")
-      guard let rootNode = restoreSplitNode(from: snapshotTab.splitRoot, tabID: tabID, isRoot: true) else {
-        terminalStateLogger.warning("[LayoutRestore] applySnapshot: restoreSplitNode failed for tab[\(index)]")
-        closeAllSurfaces()
-        return false
-      }
-      let tree = SplitTree<GhosttySurfaceView>.restored(root: rootNode)
-      restoredTrees[tabID] = tree
-      restoredFocusedSurfaceIDs[tabID] = rootNode.leftmostLeaf().id
-      restoredTabs.append(
-        TerminalTabItem(
-          id: tabID,
-          title: "\(worktree.name) \(index + 1)",
-          icon: "terminal"
-        )
-      )
+      validatedTabs.append((tabID: tabID, snapshotTab: snapshotTab))
     }
 
     let selectedTabID: TerminalTabID?
     if let selectedTabRaw = snapshot.selectedTabID {
       guard let selectedUUID = UUID(uuidString: selectedTabRaw) else {
         terminalStateLogger.warning("[LayoutRestore] applySnapshot: invalid selectedTab UUID \(selectedTabRaw)")
-        closeAllSurfaces()
         return false
       }
       let candidate = TerminalTabID(rawValue: selectedUUID)
       guard seenTabIDs.contains(candidate) else {
         terminalStateLogger.warning("[LayoutRestore] applySnapshot: selectedTab not in restored tabs")
-        closeAllSurfaces()
         return false
       }
       selectedTabID = candidate
     } else {
-      selectedTabID = restoredTabs.first?.id
+      selectedTabID = validatedTabs.first?.tabID
     }
 
+    // Close existing surfaces BEFORE creating new ones so new surfaces
+    // don't get destroyed by closeAllSurfaces().
+    terminalStateLogger.info("[LayoutRestore] applySnapshot: closing existing surfaces before restore")
     closeAllSurfaces()
+
+    // Now create new surfaces into the clean state.
+    var restoredTabs: [TerminalTabItem] = []
+    var restoredTrees: [TerminalTabID: SplitTree<GhosttySurfaceView>] = [:]
+    var restoredFocusedSurfaceIDs: [TerminalTabID: UUID] = [:]
+
+    for (index, entry) in validatedTabs.enumerated() {
+      terminalStateLogger.info(
+        "[LayoutRestore] applySnapshot: restoring tab[\(index)] id=\(entry.snapshotTab.tabID)"
+      )
+      guard
+        let rootNode = restoreSplitNode(from: entry.snapshotTab.splitRoot, tabID: entry.tabID, isRoot: true)
+      else {
+        terminalStateLogger.warning("[LayoutRestore] applySnapshot: restoreSplitNode failed for tab[\(index)]")
+        closeAllSurfaces()
+        return false
+      }
+      let tree = SplitTree<GhosttySurfaceView>.restored(root: rootNode)
+      restoredTrees[entry.tabID] = tree
+      restoredFocusedSurfaceIDs[entry.tabID] = rootNode.leftmostLeaf().id
+      restoredTabs.append(
+        TerminalTabItem(
+          id: entry.tabID,
+          title: "\(worktree.name) \(index + 1)",
+          icon: "terminal"
+        )
+      )
+    }
+
     trees = restoredTrees
     focusedSurfaceIdByTab = restoredFocusedSurfaceIDs
     tabIsRunningById = Dictionary(uniqueKeysWithValues: restoredTabs.map { ($0.id, false) })
