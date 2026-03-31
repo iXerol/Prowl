@@ -138,7 +138,9 @@ struct AppFeaturePlainFolderTerminalTests {
     }
     store.exhaustivity = .off
 
-    #expect(store.state.resolvedKeybindings.display(for: AppShortcuts.CommandID.showDiff) == AppShortcuts.showDiff.display)
+    #expect(
+      store.state.resolvedKeybindings.display(for: AppShortcuts.CommandID.showDiff) == AppShortcuts.showDiff.display
+    )
 
     let conflicted = UserRepositorySettings(
       customCommands: [
@@ -160,7 +162,9 @@ struct AppFeaturePlainFolderTerminalTests {
     let expectedShortcut = conflicted.customCommands[0].shortcut?.normalized()
     #expect(store.state.selectedCustomCommands == conflicted.customCommands)
     #expect(registeredShortcuts.value == [expectedShortcut].compactMap { $0 })
-    let customCommandID = LegacyCustomCommandShortcutMigration.customCommandBindingID(for: conflicted.customCommands[0].id)
+    let customCommandID = LegacyCustomCommandShortcutMigration.customCommandBindingID(
+      for: conflicted.customCommands[0].id
+    )
     #expect(store.state.resolvedKeybindings.display(for: customCommandID) == expectedShortcut?.display)
     #expect(store.state.resolvedKeybindings.display(for: AppShortcuts.CommandID.showDiff) == nil)
 
@@ -169,7 +173,9 @@ struct AppFeaturePlainFolderTerminalTests {
 
     #expect(store.state.selectedCustomCommands.isEmpty)
     #expect(registeredShortcuts.value.isEmpty)
-    #expect(store.state.resolvedKeybindings.display(for: AppShortcuts.CommandID.showDiff) == AppShortcuts.showDiff.display)
+    #expect(
+      store.state.resolvedKeybindings.display(for: AppShortcuts.CommandID.showDiff) == AppShortcuts.showDiff.display
+    )
   }
 
   @Test(.dependencies) func customCommandUsesPlainRepositoryTerminalTarget() async {
