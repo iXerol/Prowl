@@ -238,14 +238,16 @@ extension TerminalLayoutSnapshotPayload {
   nonisolated struct SnapshotSplitNode: Codable, Equatable, Sendable {
     let kind: TerminalLayoutSnapshotNodeKind
     let surfaceID: String?
+    let cwdPath: String?
     let direction: TerminalLayoutSnapshotSplitDirection?
     let ratio: Double?
     let children: [SnapshotSplitNode]?
 
-    static func leaf(surfaceID: String) -> SnapshotSplitNode {
+    static func leaf(surfaceID: String, cwdPath: String? = nil) -> SnapshotSplitNode {
       SnapshotSplitNode(
         kind: .leaf,
         surfaceID: surfaceID,
+        cwdPath: cwdPath,
         direction: nil,
         ratio: nil,
         children: nil
@@ -260,6 +262,7 @@ extension TerminalLayoutSnapshotPayload {
       SnapshotSplitNode(
         kind: .split,
         surfaceID: nil,
+        cwdPath: nil,
         direction: direction,
         ratio: ratio,
         children: children
@@ -282,6 +285,9 @@ extension TerminalLayoutSnapshotPayload {
         guard hasContent(surfaceID) else {
           return false
         }
+        if let cwdPath, !hasContent(cwdPath) {
+          return false
+        }
         guard direction == nil, ratio == nil else {
           return false
         }
@@ -291,7 +297,7 @@ extension TerminalLayoutSnapshotPayload {
         guard depth < maxDepth else {
           return false
         }
-        guard surfaceID == nil else {
+        guard surfaceID == nil, cwdPath == nil else {
           return false
         }
         guard direction != nil else {

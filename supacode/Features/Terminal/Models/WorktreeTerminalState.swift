@@ -742,6 +742,7 @@ final class WorktreeTerminalState {
     tabId: TerminalTabID,
     initialInput: String?,
     inheritingFromSurfaceId: UUID?,
+    workingDirectoryOverride: URL? = nil,
     context: ghostty_surface_context_e
   ) -> GhosttySurfaceView {
     let inherited = inheritedSurfaceConfig(fromSurfaceId: inheritingFromSurfaceId, context: context)
@@ -752,7 +753,7 @@ final class WorktreeTerminalState {
     )
     let view = GhosttySurfaceView(
       runtime: runtime,
-      workingDirectory: inherited.workingDirectory ?? worktree.workingDirectory,
+      workingDirectory: workingDirectoryOverride ?? inherited.workingDirectory ?? worktree.workingDirectory,
       initialInput: initialInput,
       fontSize: resolvedFontSize,
       context: context
@@ -851,6 +852,28 @@ final class WorktreeTerminalState {
       return inheritedFontSize ?? defaultFontSize
     }
     return defaultFontSize
+  }
+
+  static func resolveSnapshotWorkingDirectory(
+    from snapshotPath: String?,
+    worktreeRoot: URL,
+    fileManager: FileManager = .default
+  ) -> URL? {
+    guard let snapshotPath,
+      let normalizedPath = PathPolicy.normalizePath(snapshotPath, relativeTo: worktreeRoot)
+    else {
+      return nil
+    }
+
+    let normalizedURL = URL(fileURLWithPath: normalizedPath).standardizedFileURL
+    var isDirectory: ObjCBool = false
+    guard fileManager.fileExists(atPath: normalizedPath, isDirectory: &isDirectory), isDirectory.boolValue else {
+      return nil
+    }
+    guard PathPolicy.contains(normalizedURL, in: worktreeRoot) else {
+      return nil
+    }
+    return normalizedURL
   }
 
   private struct InheritedSurfaceConfig: Equatable {
@@ -1008,7 +1031,11 @@ final class WorktreeTerminalState {
   ) -> TerminalLayoutSnapshotPayload.SnapshotSplitNode? {
     switch node {
     case .leaf(let view):
-      return .leaf(surfaceID: view.id.uuidString)
+      let cwdPath = inheritedSurfaceConfig(
+        fromSurfaceId: view.id,
+        context: GHOSTTY_SURFACE_CONTEXT_TAB
+      ).workingDirectory?.path(percentEncoded: false)
+      return .leaf(surfaceID: view.id.uuidString, cwdPath: cwdPath)
     case .split(let split):
       guard let left = makeLayoutSnapshotNode(from: split.left) else {
         return nil
@@ -1037,10 +1064,15 @@ final class WorktreeTerminalState {
         return nil
       }
       let context: ghostty_surface_context_e = isRoot ? GHOSTTY_SURFACE_CONTEXT_TAB : GHOSTTY_SURFACE_CONTEXT_SPLIT
+      let restoredWorkingDirectory = Self.resolveSnapshotWorkingDirectory(
+        from: snapshotNode.cwdPath,
+        worktreeRoot: worktree.workingDirectory
+      )
       let view = createSurface(
         tabId: tabID,
         initialInput: nil,
         inheritingFromSurfaceId: nil,
+        workingDirectoryOverride: restoredWorkingDirectory,
         context: context
       )
       return .leaf(view: view)

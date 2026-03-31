@@ -12,6 +12,14 @@ struct TerminalLayoutSnapshotPayloadTests {
     #expect(decoded == payload)
   }
 
+  @Test func decodeValidatedRoundTripsLeafCwdPath() throws {
+    let payload = makePayload(splitRoot: .leaf(surfaceID: "surface-1", cwdPath: "/tmp/repo/wt-1/src"))
+    let data = try JSONEncoder().encode(payload)
+
+    let decoded = TerminalLayoutSnapshotPayload.decodeValidated(from: data)
+    #expect(decoded == payload)
+  }
+
   @Test func decodeValidatedRejectsOversizedData() {
     let data = Data(
       repeating: 0,
@@ -87,6 +95,7 @@ struct TerminalLayoutSnapshotPayloadTests {
     let invalidRoot = TerminalLayoutSnapshotPayload.SnapshotSplitNode(
       kind: .split,
       surfaceID: nil,
+      cwdPath: nil,
       direction: .horizontal,
       ratio: 0.5,
       children: [
@@ -114,6 +123,31 @@ struct TerminalLayoutSnapshotPayloadTests {
         ),
       ]
     )
+    let data = try JSONEncoder().encode(payload)
+
+    #expect(TerminalLayoutSnapshotPayload.decodeValidated(from: data) == nil)
+  }
+
+  @Test func decodeValidatedRejectsLeafWithEmptyCwdPath() throws {
+    let payload = makePayload(splitRoot: .leaf(surfaceID: "surface-1", cwdPath: "   "))
+    let data = try JSONEncoder().encode(payload)
+
+    #expect(TerminalLayoutSnapshotPayload.decodeValidated(from: data) == nil)
+  }
+
+  @Test func decodeValidatedRejectsSplitNodeWithCwdPath() throws {
+    let invalidRoot = TerminalLayoutSnapshotPayload.SnapshotSplitNode(
+      kind: .split,
+      surfaceID: nil,
+      cwdPath: "/tmp/repo/wt-1",
+      direction: .horizontal,
+      ratio: 0.5,
+      children: [
+        .leaf(surfaceID: "surface-1"),
+        .leaf(surfaceID: "surface-2"),
+      ]
+    )
+    let payload = makePayload(splitRoot: invalidRoot)
     let data = try JSONEncoder().encode(payload)
 
     #expect(TerminalLayoutSnapshotPayload.decodeValidated(from: data) == nil)
