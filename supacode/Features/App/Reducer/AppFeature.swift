@@ -90,11 +90,32 @@ struct AppFeature {
     customCommands: [UserCustomCommand]
   ) -> ResolvedKeybindingMap {
     let migration = LegacyCustomCommandShortcutMigration.migrate(commands: customCommands)
-    return KeybindingResolver.resolve(
+    var resolved = KeybindingResolver.resolve(
       schema: .appResolverSchema(customCommands: customCommands),
       userOverrides: settings.keybindingUserOverrides,
       migratedOverrides: migration.overrides
     )
+    let customCommandIDs = customCommands.map { command in
+      LegacyCustomCommandShortcutMigration.customCommandBindingID(for: command.id)
+    }
+    let customCommandBindings = customCommandIDs.compactMap { resolved.keybinding(for: $0) }
+    guard !customCommandBindings.isEmpty else {
+      return resolved
+    }
+    for binding in AppShortcuts.bindings where binding.scope == .configurableAppAction {
+      guard let resolvedBinding = resolved.binding(for: binding.id),
+        let shortcut = resolvedBinding.binding,
+        customCommandBindings.contains(shortcut)
+      else {
+        continue
+      }
+      resolved.bindingsByCommandID[binding.id] = ResolvedKeybinding(
+        command: resolvedBinding.command,
+        binding: nil,
+        source: resolvedBinding.source
+      )
+    }
+    return resolved
   }
 
   var body: some Reducer<State, Action> {

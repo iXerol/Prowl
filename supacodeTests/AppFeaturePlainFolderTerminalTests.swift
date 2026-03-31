@@ -120,7 +120,7 @@ struct AppFeaturePlainFolderTerminalTests {
     )
   }
 
-  @Test(.dependencies) func loadingConflictingShortcutKeepsRegistration() async {
+  @Test(.dependencies) func conflictingCustomShortcutOverridesAppShortcutOnlyForSelectedRepository() async {
     let repository = makePlainRepository()
     let registeredShortcuts = LockIsolated<[UserCustomShortcut]>([])
     var state = AppFeature.State(
@@ -136,6 +136,9 @@ struct AppFeaturePlainFolderTerminalTests {
         registeredShortcuts.setValue(shortcuts)
       }
     }
+    store.exhaustivity = .off
+
+    #expect(store.state.resolvedKeybindings.display(for: AppShortcuts.CommandID.showDiff) == AppShortcuts.showDiff.display)
 
     let conflicted = UserRepositorySettings(
       customCommands: [
@@ -145,25 +148,28 @@ struct AppFeaturePlainFolderTerminalTests {
           command: "swift build",
           execution: .shellScript,
           shortcut: UserCustomShortcut(
-            key: "b",
-            modifiers: UserCustomShortcutModifiers(command: true)
+            key: "y",
+            modifiers: UserCustomShortcutModifiers(command: true, shift: true)
           )
         ),
       ]
     )
 
-    await store.send(.worktreeUserSettingsLoaded(conflicted, worktreeID: repository.id)) {
-      $0.selectedCustomCommands = conflicted.customCommands
-      let migration = LegacyCustomCommandShortcutMigration.migrate(commands: conflicted.customCommands)
-      $0.resolvedKeybindings = KeybindingResolver.resolve(
-        schema: .appResolverSchema(customCommands: conflicted.customCommands),
-        migratedOverrides: migration.overrides
-      )
-    }
-    await store.finish()
+    await store.send(.worktreeUserSettingsLoaded(conflicted, worktreeID: repository.id))
 
     let expectedShortcut = conflicted.customCommands[0].shortcut?.normalized()
+    #expect(store.state.selectedCustomCommands == conflicted.customCommands)
     #expect(registeredShortcuts.value == [expectedShortcut].compactMap { $0 })
+    let customCommandID = LegacyCustomCommandShortcutMigration.customCommandBindingID(for: conflicted.customCommands[0].id)
+    #expect(store.state.resolvedKeybindings.display(for: customCommandID) == expectedShortcut?.display)
+    #expect(store.state.resolvedKeybindings.display(for: AppShortcuts.CommandID.showDiff) == nil)
+
+    await store.send(.worktreeUserSettingsLoaded(.default, worktreeID: repository.id))
+    await store.finish()
+
+    #expect(store.state.selectedCustomCommands.isEmpty)
+    #expect(registeredShortcuts.value.isEmpty)
+    #expect(store.state.resolvedKeybindings.display(for: AppShortcuts.CommandID.showDiff) == AppShortcuts.showDiff.display)
   }
 
   @Test(.dependencies) func customCommandUsesPlainRepositoryTerminalTarget() async {
