@@ -605,7 +605,7 @@ final class WorktreeTerminalState {
         closeAllSurfaces()
         return false
       }
-      let tree = SplitTree<GhosttySurfaceView>(root: rootNode, zoomed: nil)
+      let tree = SplitTree<GhosttySurfaceView>.restored(root: rootNode)
       restoredTrees[tabID] = tree
       restoredFocusedSurfaceIDs[tabID] = rootNode.leftmostLeaf().id
       restoredTabs.append(

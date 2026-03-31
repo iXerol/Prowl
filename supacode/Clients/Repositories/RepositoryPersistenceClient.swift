@@ -101,7 +101,6 @@ extension RepositoryPersistenceClient: DependencyKey {
         }
       },
       loadRepositorySnapshot: {
-        try? SupacodePaths.migrateLegacyCacheFilesIfNeeded()
         let snapshotURL = SupacodePaths.repositorySnapshotURL
         guard let data = try? Data(contentsOf: snapshotURL) else {
           return nil
@@ -143,7 +142,6 @@ extension RepositoryPersistenceClient: DependencyKey {
         }
       },
       saveRepositorySnapshot: { repositories in
-        try? SupacodePaths.migrateLegacyCacheFilesIfNeeded()
         let snapshotURL = SupacodePaths.repositorySnapshotURL
         guard !repositories.isEmpty else {
           discardRepositorySnapshot(at: snapshotURL)

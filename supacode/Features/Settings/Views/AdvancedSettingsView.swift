@@ -49,6 +49,7 @@ struct AdvancedSettingsView: View {
             Button("Clear saved terminal layout") {
               store.send(.clearTerminalLayoutSnapshotButtonTapped)
             }
+            .help("Remove the saved terminal tab and split layout from disk")
             .buttonStyle(.bordered)
           }
           .frame(maxWidth: .infinity, alignment: .leading)

@@ -112,6 +112,7 @@ struct AppFeature {
     let core = Reduce<State, Action> { state, action in
       switch action {
       case .appLaunched:
+        try? SupacodePaths.migrateLegacyCacheFilesIfNeeded()
         return .merge(
           .send(.repositories(.task)),
           .send(.settings(.task)),
