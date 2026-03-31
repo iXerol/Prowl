@@ -47,6 +47,12 @@ struct RepositorySettingsView: View {
     "paperplane.fill",
     "cloud.fill",
     "tray.and.arrow.down.fill",
+    "tray.and.arrow.up.fill",
+    "icloud.and.arrow.up.fill",
+    "square.and.arrow.up.fill",
+    "arrow.triangle.2.circlepath",
+    "folder.badge.plus",
+    "doc.badge.plus",
   ]
 
   var body: some View {
