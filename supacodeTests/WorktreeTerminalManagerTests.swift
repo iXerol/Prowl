@@ -163,6 +163,41 @@ struct WorktreeTerminalManagerTests {
     #expect(captured == [14, 16])
   }
 
+  @Test func cellSizeChangeWithSameFontSizeDoesNotEmit() {
+    let state = WorktreeTerminalState(runtime: GhosttyRuntime(), worktree: makeWorktree())
+    var captured: [Float32?] = []
+    let surface = UUID()
+
+    state.onFontSizeChanged = { fontSize in
+      captured.append(fontSize)
+    }
+
+    state.handleCellSizeChange(forSurfaceID: surface, fontSize: 14)
+    state.handleCellSizeChange(forSurfaceID: surface, fontSize: 16)
+    state.handleCellSizeChange(forSurfaceID: surface, fontSize: 16)
+    state.handleCellSizeChange(forSurfaceID: surface, fontSize: 16)
+
+    #expect(captured == [16])
+  }
+
+  @Test func cellSizeChangeEmitsOnActualFontSizeChange() {
+    let state = WorktreeTerminalState(runtime: GhosttyRuntime(), worktree: makeWorktree())
+    var captured: [Float32?] = []
+    let surface = UUID()
+
+    state.onFontSizeChanged = { fontSize in
+      captured.append(fontSize)
+    }
+
+    state.handleCellSizeChange(forSurfaceID: surface, fontSize: 14)
+    state.handleCellSizeChange(forSurfaceID: surface, fontSize: 16)
+    state.handleCellSizeChange(forSurfaceID: surface, fontSize: 16)
+    state.handleCellSizeChange(forSurfaceID: surface, fontSize: 18)
+    state.handleCellSizeChange(forSurfaceID: surface, fontSize: nil)
+
+    #expect(captured == [16, 18, nil])
+  }
+
   @Test func notificationIndicatorUsesCurrentCountOnStreamStart() async {
     let manager = WorktreeTerminalManager(runtime: GhosttyRuntime())
     let worktree = makeWorktree()

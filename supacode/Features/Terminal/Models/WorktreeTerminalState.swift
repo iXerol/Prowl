@@ -28,6 +28,7 @@ final class WorktreeTerminalState {
   private var pendingSetupScript: Bool
   private var defaultFontSize: Float32?
   private var hasInitializedCellSizeSurfaceIDs: Set<UUID> = []
+  private var lastReportedFontSizeBySurface: [UUID: Float32?] = [:]
   private var isEnsuringInitialTab = false
   private var lastReportedTaskStatus: WorktreeTaskStatus?
   private var lastEmittedFocusSurfaceId: UUID?
@@ -468,6 +469,7 @@ final class WorktreeTerminalState {
         newSurface.closeSurface()
         surfaces.removeValue(forKey: newSurface.id)
         hasInitializedCellSizeSurfaceIDs.remove(newSurface.id)
+        lastReportedFontSizeBySurface.removeValue(forKey: newSurface.id)
         return false
       }
 
@@ -562,6 +564,7 @@ final class WorktreeTerminalState {
     }
     surfaces.removeAll()
     hasInitializedCellSizeSurfaceIDs.removeAll()
+    lastReportedFontSizeBySurface.removeAll()
     trees.removeAll()
     focusedSurfaceIdByTab.removeAll()
     tabIsRunningById.removeAll()
@@ -981,7 +984,13 @@ final class WorktreeTerminalState {
 
   func handleCellSizeChange(forSurfaceID surfaceID: UUID, fontSize: Float32?) {
     let inserted = hasInitializedCellSizeSurfaceIDs.insert(surfaceID).inserted
-    guard !inserted else { return }
+    guard !inserted else {
+      lastReportedFontSizeBySurface[surfaceID] = fontSize
+      return
+    }
+    let previous = lastReportedFontSizeBySurface[surfaceID]
+    lastReportedFontSizeBySurface[surfaceID] = fontSize
+    guard previous != fontSize else { return }
     onFontSizeChanged?(fontSize)
   }
 
@@ -1239,6 +1248,7 @@ final class WorktreeTerminalState {
       surface.closeSurface()
       surfaces.removeValue(forKey: surface.id)
       hasInitializedCellSizeSurfaceIDs.remove(surface.id)
+      lastReportedFontSizeBySurface.removeValue(forKey: surface.id)
     }
     focusedSurfaceIdByTab.removeValue(forKey: tabId)
     tabIsRunningById.removeValue(forKey: tabId)
@@ -1365,12 +1375,14 @@ final class WorktreeTerminalState {
       view.closeSurface()
       surfaces.removeValue(forKey: view.id)
       hasInitializedCellSizeSurfaceIDs.remove(view.id)
+      lastReportedFontSizeBySurface.removeValue(forKey: view.id)
       return
     }
     guard let node = tree.find(id: view.id) else {
       view.closeSurface()
       surfaces.removeValue(forKey: view.id)
       hasInitializedCellSizeSurfaceIDs.remove(view.id)
+      lastReportedFontSizeBySurface.removeValue(forKey: view.id)
       return
     }
     let nextSurface =
@@ -1381,6 +1393,7 @@ final class WorktreeTerminalState {
     view.closeSurface()
     surfaces.removeValue(forKey: view.id)
     hasInitializedCellSizeSurfaceIDs.remove(view.id)
+    lastReportedFontSizeBySurface.removeValue(forKey: view.id)
     if newTree.isEmpty {
       trees.removeValue(forKey: tabId)
       focusedSurfaceIdByTab.removeValue(forKey: tabId)
