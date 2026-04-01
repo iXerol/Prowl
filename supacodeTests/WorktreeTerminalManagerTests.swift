@@ -46,56 +46,6 @@ struct WorktreeTerminalManagerTests {
     #expect(event == .setupScriptConsumed(worktreeID: worktree.id))
   }
 
-  @Test func fontSizeResetToBaselineEmitsNilOverride() async {
-    let runtime = GhosttyRuntime()
-    let baseline = runtime.defaultFontSize()
-    let manager = WorktreeTerminalManager(runtime: runtime, preferredFontSize: baseline + 1)
-    let worktree = makeWorktree()
-    let state = manager.state(for: worktree)
-    let stream = manager.eventStream()
-    var iterator = stream.makeAsyncIterator()
-
-    state.onFontSizeChanged?(baseline)
-
-    var event: TerminalClient.Event?
-    while let next = await iterator.next() {
-      if case .fontSizeChanged = next {
-        event = next
-        break
-      }
-    }
-
-    #expect(event == .fontSizeChanged(nil))
-  }
-
-  @Test func duplicateFontSizeChangeIsDeduplicated() async {
-    let runtime = GhosttyRuntime()
-    let baseline = runtime.defaultFontSize()
-    let firstSize = baseline + 2
-    let secondSize = baseline + 3
-    let manager = WorktreeTerminalManager(runtime: runtime)
-    let worktree = makeWorktree()
-    let state = manager.state(for: worktree)
-    let stream = manager.eventStream()
-    var iterator = stream.makeAsyncIterator()
-
-    state.onFontSizeChanged?(firstSize)
-    state.onFontSizeChanged?(firstSize)
-    state.onFontSizeChanged?(secondSize)
-
-    var fontSizeEvents: [TerminalClient.Event] = []
-    while let next = await iterator.next() {
-      if case .fontSizeChanged = next {
-        fontSizeEvents.append(next)
-      }
-      if fontSizeEvents.count == 2 {
-        break
-      }
-    }
-
-    #expect(fontSizeEvents == [.fontSizeChanged(firstSize), .fontSizeChanged(secondSize)])
-  }
-
   @Test func explicitResetAcrossStatesEmitsNilOverride() async {
     let runtime = GhosttyRuntime()
     let baseline = runtime.defaultFontSize()
@@ -145,57 +95,24 @@ struct WorktreeTerminalManagerTests {
     #expect(first == .notificationIndicatorChanged(count: 0))
   }
 
-  @Test func cellSizeChangeSkipsFirstEventPerSurface() {
-    let state = WorktreeTerminalState(runtime: GhosttyRuntime(), worktree: makeWorktree())
-    var captured: [Float32?] = []
-    let firstSurface = UUID()
-    let secondSurface = UUID()
+  @Test func syncPreferredFontSizeNoOpForMissingState() async {
+    let manager = WorktreeTerminalManager(runtime: GhosttyRuntime())
+    let stream = manager.eventStream()
+    var iterator = stream.makeAsyncIterator()
 
-    state.onFontSizeChanged = { fontSize in
-      captured.append(fontSize)
-    }
+    manager.syncPreferredFontSize(from: "/nonexistent")
 
-    state.handleCellSizeChange(forSurfaceID: firstSurface, fontSize: 13)
-    state.handleCellSizeChange(forSurfaceID: firstSurface, fontSize: 14)
-    state.handleCellSizeChange(forSurfaceID: secondSurface, fontSize: 15)
-    state.handleCellSizeChange(forSurfaceID: secondSurface, fontSize: 16)
-
-    #expect(captured == [14, 16])
+    // Should not emit font event; only the notification indicator event
+    let first = await iterator.next()
+    #expect(first == .notificationIndicatorChanged(count: 0))
   }
 
-  @Test func cellSizeChangeWithSameFontSizeDoesNotEmit() {
-    let state = WorktreeTerminalState(runtime: GhosttyRuntime(), worktree: makeWorktree())
-    var captured: [Float32?] = []
-    let surface = UUID()
+  @Test func onFontSizeAdjustedCallbackIsWired() {
+    let manager = WorktreeTerminalManager(runtime: GhosttyRuntime())
+    let worktree = makeWorktree()
+    let state = manager.state(for: worktree)
 
-    state.onFontSizeChanged = { fontSize in
-      captured.append(fontSize)
-    }
-
-    state.handleCellSizeChange(forSurfaceID: surface, fontSize: 14)
-    state.handleCellSizeChange(forSurfaceID: surface, fontSize: 16)
-    state.handleCellSizeChange(forSurfaceID: surface, fontSize: 16)
-    state.handleCellSizeChange(forSurfaceID: surface, fontSize: 16)
-
-    #expect(captured == [16])
-  }
-
-  @Test func cellSizeChangeEmitsOnActualFontSizeChange() {
-    let state = WorktreeTerminalState(runtime: GhosttyRuntime(), worktree: makeWorktree())
-    var captured: [Float32?] = []
-    let surface = UUID()
-
-    state.onFontSizeChanged = { fontSize in
-      captured.append(fontSize)
-    }
-
-    state.handleCellSizeChange(forSurfaceID: surface, fontSize: 14)
-    state.handleCellSizeChange(forSurfaceID: surface, fontSize: 16)
-    state.handleCellSizeChange(forSurfaceID: surface, fontSize: 16)
-    state.handleCellSizeChange(forSurfaceID: surface, fontSize: 18)
-    state.handleCellSizeChange(forSurfaceID: surface, fontSize: nil)
-
-    #expect(captured == [16, 18, nil])
+    #expect(state.onFontSizeAdjusted != nil)
   }
 
   @Test func notificationIndicatorUsesCurrentCountOnStreamStart() async {

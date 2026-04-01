@@ -289,13 +289,20 @@ struct WorktreeDetailView: View {
           terminalManager.resetFontSizeAcrossStates()
         }
       }
-      if let action = canvasAction({ $0.performBindingActionOnFocusedSurface(bindingAction) }) {
-        return action
+      if repositories.isShowingCanvas {
+        return {
+          guard let worktreeID = terminalManager.canvasFocusedWorktreeID,
+            let state = terminalManager.stateIfExists(for: worktreeID)
+          else { return }
+          _ = state.performBindingActionOnFocusedSurface(bindingAction)
+          terminalManager.syncPreferredFontSize(from: worktreeID)
+        }
       }
       guard hasActiveWorktree, let selectedWorktree = repositories.selectedTerminalWorktree else { return nil }
       return {
         guard let state = terminalManager.stateIfExists(for: selectedWorktree.id) else { return }
         _ = state.performBindingActionOnFocusedSurface(bindingAction)
+        terminalManager.syncPreferredFontSize(from: selectedWorktree.id)
       }
     }
 
