@@ -129,6 +129,20 @@ struct AppFeatureTerminalLayoutRestoreTests {
     await store.receive(\.repositories.selectWorktree)
   }
 
+  @Test(.dependencies) func layoutRestoredEventSelectsRepositoryForPlainFolder() async {
+    let plainRepo = makePlainRepository()
+    let repositoriesState = RepositoriesFeature.State(repositories: [plainRepo])
+    let store = TestStore(
+      initialState: AppFeature.State(repositories: repositoriesState)
+    ) {
+      AppFeature()
+    }
+    store.exhaustivity = .off
+
+    await store.send(.terminalEvent(.layoutRestored(selectedWorktreeID: plainRepo.id)))
+    await store.receive(\.repositories.selectRepository)
+  }
+
   @Test(.dependencies) func scenePhaseInactiveSavesLayoutSnapshot() async {
     let sentCommands = LockIsolated<[TerminalClient.Command]>([])
     var settings = SettingsFeature.State()
@@ -164,6 +178,64 @@ struct AppFeatureTerminalLayoutRestoreTests {
 
     #expect(!sentCommands.value.contains(.saveLayoutSnapshot))
   }
+
+  @Test(.dependencies) func clearLayoutSuppressesSaveOnScenePhaseInactive() async {
+    let sentCommands = LockIsolated<[TerminalClient.Command]>([])
+    var settings = SettingsFeature.State()
+    settings.restoreTerminalLayoutOnLaunch = true
+    let store = TestStore(initialState: AppFeature.State(settings: settings)) {
+      AppFeature()
+    } withDependencies: {
+      $0.terminalClient.send = { command in
+        sentCommands.withValue { $0.append(command) }
+      }
+      $0.terminalLayoutPersistence.clearSnapshot = { true }
+    }
+    store.exhaustivity = .off
+
+    // Clear the layout
+    await store.send(.settings(.delegate(.terminalLayoutSnapshotCleared(success: true)))) {
+      $0.suppressLayoutSaveUntilRelaunch = true
+    }
+    await store.finish()
+
+    sentCommands.withValue { $0.removeAll() }
+
+    // Scene phase inactive should NOT save because layout was cleared
+    await store.send(.scenePhaseChanged(.inactive))
+    await store.finish()
+
+    #expect(!sentCommands.value.contains(.saveLayoutSnapshot))
+  }
+
+  @Test(.dependencies) func suppressLayoutSavePersistsAcrossMultipleScenePhaseChanges() async {
+    let sentCommands = LockIsolated<[TerminalClient.Command]>([])
+    var settings = SettingsFeature.State()
+    settings.restoreTerminalLayoutOnLaunch = true
+    let store = TestStore(initialState: AppFeature.State(settings: settings)) {
+      AppFeature()
+    } withDependencies: {
+      $0.terminalClient.send = { command in
+        sentCommands.withValue { $0.append(command) }
+      }
+      $0.terminalLayoutPersistence.clearSnapshot = { true }
+    }
+    store.exhaustivity = .off
+
+    // Clear the layout
+    await store.send(.settings(.delegate(.terminalLayoutSnapshotCleared(success: true)))) {
+      $0.suppressLayoutSaveUntilRelaunch = true
+    }
+    await store.finish()
+
+    // Multiple inactive/active cycles should all skip saving
+    for _ in 0..<3 {
+      sentCommands.withValue { $0.removeAll() }
+      await store.send(.scenePhaseChanged(.inactive))
+      await store.finish()
+      #expect(!sentCommands.value.contains(.saveLayoutSnapshot))
+    }
+  }
 }
 
 private func makeWorktree() -> Worktree {
@@ -182,5 +254,15 @@ private func makeRepository(worktrees: [Worktree]) -> Repository {
     rootURL: URL(fileURLWithPath: "/tmp/repo"),
     name: "repo",
     worktrees: IdentifiedArray(uniqueElements: worktrees)
+  )
+}
+
+private func makePlainRepository() -> Repository {
+  Repository(
+    id: "/tmp/plain-folder",
+    rootURL: URL(fileURLWithPath: "/tmp/plain-folder"),
+    name: "plain-folder",
+    kind: .plain,
+    worktrees: IdentifiedArray()
   )
 }

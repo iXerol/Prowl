@@ -51,6 +51,7 @@ struct AppFeature {
     var notificationIndicatorCount: Int = 0
     var lastKnownSystemNotificationsEnabled: Bool
     var launchRestoreMode: LaunchRestoreMode
+    var suppressLayoutSaveUntilRelaunch = false
     @Presents var alert: AlertState<Alert>?
 
     init(
@@ -189,7 +190,7 @@ struct AppFeature {
           )
         case .inactive, .background:
           var effects: [Effect<Action>] = [.cancel(id: CancelID.periodicRefresh)]
-          if state.settings.restoreTerminalLayoutOnLaunch {
+          if state.settings.restoreTerminalLayoutOnLaunch, !state.suppressLayoutSaveUntilRelaunch {
             appLogger.info("[LayoutRestore] scenePhase=\(String(describing: phase)), saving layout snapshot")
             effects.append(.run { _ in await terminalClient.send(.saveLayoutSnapshot) })
           }
@@ -469,6 +470,7 @@ struct AppFeature {
 
       case .settings(.delegate(.terminalLayoutSnapshotCleared(let success))):
         if success {
+          state.suppressLayoutSaveUntilRelaunch = true
           return .send(.repositories(.showToast(.success("Saved terminal layout cleared"))))
         }
         return .send(
@@ -928,6 +930,12 @@ struct AppFeature {
       case .terminalEvent(.layoutRestored(let selectedWorktreeID)):
         appLogger.info("[LayoutRestore] layoutRestored: selectedWorktreeID=\(selectedWorktreeID ?? "nil")")
         if let selectedWorktreeID {
+          // Plain folders use .repository selection, not .worktree
+          if let repo = state.repositories.repositories[id: selectedWorktreeID],
+            repo.kind == .plain
+          {
+            return .send(.repositories(.selectRepository(selectedWorktreeID)))
+          }
           return .send(.repositories(.selectWorktree(selectedWorktreeID)))
         }
         return .none

@@ -53,6 +53,7 @@ final class SupacodeAppDelegate: NSObject, NSApplicationDelegate {
 
   func applicationWillTerminate(_ notification: Notification) {
     guard appStore?.state.settings.restoreTerminalLayoutOnLaunch == true else { return }
+    guard appStore?.state.suppressLayoutSaveUntilRelaunch != true else { return }
     terminalManager?.persistLayoutSnapshotSync()
   }
 
