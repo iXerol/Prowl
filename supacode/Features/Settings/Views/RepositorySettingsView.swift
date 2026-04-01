@@ -190,7 +190,6 @@ struct RepositorySettingsView: View {
 
       if store.showsSetupScriptSettings {
         Section {
-          ZStack(alignment: .topLeading) {
           PlainTextEditor(
             text: settings.setupScript,
             placeholder: "claude --dangerously-skip-permissions"
@@ -1363,7 +1362,6 @@ private struct BranchPickerPopover: View {
   }
 }
 
-<<<<<<< HEAD
 private struct CustomCommandShortcutConflict: Equatable {
   let newCommandID: UserCustomCommand.ID
   let newCommandTitle: String
