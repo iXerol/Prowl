@@ -31,6 +31,8 @@ final class WorktreeTerminalState {
   private var isEnsuringInitialTab = false
   private var lastReportedTaskStatus: WorktreeTaskStatus?
   private var lastEmittedFocusSurfaceId: UUID?
+  private var lastWindowIsKey: Bool?
+  private var lastWindowIsVisible: Bool?
   var notifications: [WorktreeTerminalNotification] = []
   var notificationsEnabled = true
   private var commandFinishedNotificationEnabled = true
@@ -278,16 +280,24 @@ final class WorktreeTerminalState {
   }
 
   func syncFocus(windowIsKey: Bool, windowIsVisible: Bool) {
+    lastWindowIsKey = windowIsKey
+    lastWindowIsVisible = windowIsVisible
+    applySurfaceActivity()
+  }
+
+  private func applySurfaceActivity() {
     let selectedTabId = tabManager.selectedTabId
     var surfaceToFocus: GhosttySurfaceView?
     for (tabId, tree) in trees {
       let focusedId = focusedSurfaceIdByTab[tabId]
       let isSelectedTab = (tabId == selectedTabId)
+      let visibleSurfaceIDs = Set(tree.visibleLeaves().map(\.id))
       for surface in tree.leaves() {
         let activity = Self.surfaceActivity(
+          isSurfaceVisibleInTree: visibleSurfaceIDs.contains(surface.id),
           isSelectedTab: isSelectedTab,
-          windowIsVisible: windowIsVisible,
-          windowIsKey: windowIsKey,
+          windowIsVisible: lastWindowIsVisible == true,
+          windowIsKey: lastWindowIsKey == true,
           focusedSurfaceID: focusedId,
           surfaceID: surface.id
         )
@@ -304,13 +314,14 @@ final class WorktreeTerminalState {
   }
 
   static func surfaceActivity(
+    isSurfaceVisibleInTree: Bool = true,
     isSelectedTab: Bool,
     windowIsVisible: Bool,
     windowIsKey: Bool,
     focusedSurfaceID: UUID?,
     surfaceID: UUID
   ) -> SurfaceActivity {
-    let isVisible = isSelectedTab && windowIsVisible
+    let isVisible = isSurfaceVisibleInTree && isSelectedTab && windowIsVisible
     let isFocused = isVisible && windowIsKey && focusedSurfaceID == surfaceID
     return SurfaceActivity(isVisible: isVisible, isFocused: isFocused)
   }
@@ -450,7 +461,7 @@ final class WorktreeTerminalState {
           at: targetSurface,
           direction: mapSplitDirection(direction)
         )
-        trees[tabId] = newTree
+        updateTree(newTree, for: tabId)
         focusSurface(newSurface, in: tabId)
         return true
       } catch {
@@ -470,6 +481,7 @@ final class WorktreeTerminalState {
         trees[tabId] = tree
       }
       focusSurface(nextSurface, in: tabId)
+      syncFocusIfNeeded()
       return true
 
     case .resizeSplit(let direction, let amount):
@@ -481,20 +493,21 @@ final class WorktreeTerminalState {
           in: spatialDirection,
           with: CGRect(origin: .zero, size: tree.viewBounds())
         )
-        trees[tabId] = newTree
+        updateTree(newTree, for: tabId)
         return true
       } catch {
         return false
       }
 
     case .equalizeSplits:
-      trees[tabId] = tree.equalized()
+      updateTree(tree.equalized(), for: tabId)
       return true
 
     case .toggleSplitZoom:
       guard tree.isSplit else { return false }
       let newZoomed = (tree.zoomed == targetNode) ? nil : targetNode
-      trees[tabId] = tree.settingZoomed(newZoomed)
+      updateTree(tree.settingZoomed(newZoomed), for: tabId)
+      focusSurface(targetSurface, in: tabId)
       return true
     }
   }
@@ -507,7 +520,7 @@ final class WorktreeTerminalState {
       let resizedNode = node.resizing(to: ratio)
       do {
         tree = try tree.replacing(node: node, with: resizedNode)
-        trees[tabId] = tree
+        updateTree(tree, for: tabId)
       } catch {
         return
       }
@@ -525,14 +538,14 @@ final class WorktreeTerminalState {
           at: destination,
           direction: mapDropZone(zone)
         )
-        trees[tabId] = newTree
+        updateTree(newTree, for: tabId)
         focusSurface(payload, in: tabId)
       } catch {
         return
       }
 
     case .equalize:
-      trees[tabId] = tree.equalized()
+      updateTree(tree.equalized(), for: tabId)
     }
   }
 
@@ -757,25 +770,29 @@ final class WorktreeTerminalState {
 
   private func setupScriptInput(setupScript: String?) -> String? {
     guard pendingSetupScript, let script = setupScript else { return nil }
-    let trimmed = script.trimmingCharacters(in: .whitespacesAndNewlines)
-    if trimmed.isEmpty {
-      return nil
-    }
-    if script.hasSuffix("\n") {
-      return script
-    }
-    return "\(script)\n"
+    return formatCommandInput(script)
+  }
+
+  private func formatCommandInput(_ script: String) -> String? {
+    makeCommandInput(
+      script: script,
+      environmentExportPrefix: worktree.scriptEnvironmentExportPrefix
+    )
   }
 
   private func runScriptInput(_ script: String) -> String? {
-    let trimmed = script.trimmingCharacters(in: .whitespacesAndNewlines)
-    if trimmed.isEmpty {
-      return nil
-    }
-    if script.hasSuffix("\n") {
-      return script
-    }
-    return "\(script)\n"
+    formatCommandInput(script)
+  }
+
+  // Appends a bare `exit`, which preserves the most recent command status in
+  // bash, zsh, and fish while remaining portable across those shells.
+  // Without this, the interactive shell stays alive after the script finishes
+  // and GHOSTTY_ACTION_SHOW_CHILD_EXITED never fires for completion detection.
+  private func blockingScriptInput(_ script: String) -> String? {
+    makeBlockingScriptInput(
+      script: script,
+      environmentExportPrefix: worktree.scriptEnvironmentExportPrefix
+    )
   }
 
   private func setRunScriptTabId(_ tabId: TerminalTabID?) {
@@ -1035,7 +1052,7 @@ final class WorktreeTerminalState {
       return
     }
     let tree = splitTree(for: tabId)
-    if let surface = tree.root?.leftmostLeaf() {
+    if let surface = tree.visibleLeaves().first {
       focusSurface(surface, in: tabId)
     }
   }
@@ -1271,6 +1288,16 @@ final class WorktreeTerminalState {
     }
   }
 
+  private func syncFocusIfNeeded() {
+    guard lastWindowIsKey != nil, lastWindowIsVisible != nil else { return }
+    applySurfaceActivity()
+  }
+
+  private func updateTree(_ tree: SplitTree<GhosttySurfaceView>, for tabId: TerminalTabID) {
+    trees[tabId] = tree
+    syncFocusIfNeeded()
+  }
+
   private func isRunningProgressState(_ state: ghostty_action_progress_report_state_e?) -> Bool {
     switch state {
     case .some(GHOSTTY_PROGRESS_STATE_SET),
@@ -1363,7 +1390,7 @@ final class WorktreeTerminalState {
       }
       return
     }
-    trees[tabId] = newTree
+    updateTree(newTree, for: tabId)
     updateRunningState(for: tabId)
     if focusedSurfaceIdByTab[tabId] == view.id {
       if let nextSurface {
@@ -1428,4 +1455,26 @@ final class WorktreeTerminalState {
     }
     return maxIndex + 1
   }
+}
+
+nonisolated func makeCommandInput(
+  script: String,
+  environmentExportPrefix: String
+) -> String? {
+  let trimmed = script.trimmingCharacters(in: .whitespacesAndNewlines)
+  guard !trimmed.isEmpty else { return nil }
+  return environmentExportPrefix + trimmed + "\n"
+}
+
+nonisolated func makeBlockingScriptInput(
+  script: String,
+  environmentExportPrefix: String
+) -> String? {
+  guard let input = makeCommandInput(
+    script: script,
+    environmentExportPrefix: environmentExportPrefix
+  ) else {
+    return nil
+  }
+  return input + "exit\n"
 }

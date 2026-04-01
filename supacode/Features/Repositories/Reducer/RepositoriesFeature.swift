@@ -1448,6 +1448,7 @@ struct RepositoriesFeature {
           commandText: commandText
         )
         let shellClient = shellClient
+        let scriptWithEnv = worktree.scriptEnvironmentExportPrefix + script
         return .run { send in
           let envURL = URL(fileURLWithPath: "/usr/bin/env")
           var progress = ArchiveScriptProgress(
@@ -1458,7 +1459,7 @@ struct RepositoriesFeature {
           do {
             for try await event in shellClient.runLoginStream(
               envURL,
-              ["bash", "-lc", script],
+              ["bash", "-lc", scriptWithEnv],
               worktree.workingDirectory,
               log: false
             ) {

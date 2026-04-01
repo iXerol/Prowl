@@ -170,6 +170,23 @@ struct RepositorySettingsView: View {
           }
         }
       }
+      Section {
+        ScriptEnvironmentRow(
+          name: "PROWL_WORKTREE_PATH",
+          description: "Path to the active worktree."
+        )
+        ScriptEnvironmentRow(
+          name: "PROWL_ROOT_PATH",
+          value: store.rootURL.path(percentEncoded: false),
+          description: "Path to the repository root."
+        )
+      } header: {
+        VStack(alignment: .leading, spacing: 4) {
+          Text("Environment Variables")
+          Text("Exported in all scripts below")
+            .foregroundStyle(.secondary)
+        }
+      }
 
       if store.showsSetupScriptSettings {
         Section {
@@ -1356,4 +1373,24 @@ private struct CustomCommandShortcutConflict: Equatable {
 private struct PendingCustomShortcut: Equatable {
   let commandID: UserCustomCommand.ID
   let shortcut: UserCustomShortcut
+}
+
+private struct ScriptEnvironmentRow: View {
+  let name: String
+  var value: String?
+  let description: String
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 2) {
+      Text(name)
+        .monospaced()
+      if let value {
+        Text(value)
+          .foregroundStyle(.secondary)
+          .monospaced()
+      }
+      Text(description)
+        .foregroundStyle(.tertiary)
+    }
+  }
 }
