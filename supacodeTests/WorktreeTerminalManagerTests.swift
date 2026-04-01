@@ -46,55 +46,6 @@ struct WorktreeTerminalManagerTests {
     #expect(event == .setupScriptConsumed(worktreeID: worktree.id))
   }
 
-  @Test func explicitResetAcrossStatesEmitsNilOverride() async {
-    let runtime = GhosttyRuntime()
-    let baseline = runtime.defaultFontSize()
-    let manager = WorktreeTerminalManager(runtime: runtime, preferredFontSize: baseline + 2)
-    let worktreeA = Worktree(
-      id: "/tmp/repo-a/wt-a",
-      name: "wt-a",
-      detail: "detail",
-      workingDirectory: URL(fileURLWithPath: "/tmp/repo-a/wt-a"),
-      repositoryRootURL: URL(fileURLWithPath: "/tmp/repo-a")
-    )
-    let worktreeB = Worktree(
-      id: "/tmp/repo-b/wt-b",
-      name: "wt-b",
-      detail: "detail",
-      workingDirectory: URL(fileURLWithPath: "/tmp/repo-b/wt-b"),
-      repositoryRootURL: URL(fileURLWithPath: "/tmp/repo-b")
-    )
-    _ = manager.state(for: worktreeA)
-    _ = manager.state(for: worktreeB)
-
-    let stream = manager.eventStream()
-    var iterator = stream.makeAsyncIterator()
-
-    manager.resetFontSizeAcrossStates()
-
-    var event: TerminalClient.Event?
-    while let next = await iterator.next() {
-      if case .fontSizeChanged = next {
-        event = next
-        break
-      }
-    }
-
-    #expect(event == .fontSizeChanged(nil))
-  }
-
-  @Test func explicitResetWhenAlreadyDefaultDoesNotEmitEvent() async {
-    let manager = WorktreeTerminalManager(runtime: GhosttyRuntime(), preferredFontSize: nil)
-    _ = manager.state(for: makeWorktree())
-    let stream = manager.eventStream()
-    var iterator = stream.makeAsyncIterator()
-
-    manager.resetFontSizeAcrossStates()
-
-    let first = await iterator.next()
-    #expect(first == .notificationIndicatorChanged(count: 0))
-  }
-
   @Test func syncPreferredFontSizeNoOpForMissingState() async {
     let manager = WorktreeTerminalManager(runtime: GhosttyRuntime())
     let stream = manager.eventStream()
