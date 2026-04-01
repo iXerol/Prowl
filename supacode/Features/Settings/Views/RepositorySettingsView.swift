@@ -172,11 +172,11 @@ struct RepositorySettingsView: View {
       }
       Section {
         ScriptEnvironmentRow(
-          name: "SUPACODE_WORKTREE_PATH",
+          name: "PROWL_WORKTREE_PATH",
           description: "Path to the active worktree."
         )
         ScriptEnvironmentRow(
-          name: "SUPACODE_ROOT_PATH",
+          name: "PROWL_ROOT_PATH",
           value: store.rootURL.path(percentEncoded: false),
           description: "Path to the repository root."
         )

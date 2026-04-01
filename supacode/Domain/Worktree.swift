@@ -26,11 +26,11 @@ nonisolated struct Worktree: Identifiable, Hashable, Sendable {
 }
 
 extension Worktree {
-  /// Environment variables exposed to all Supacode scripts.
+  /// Environment variables exposed to all Prowl scripts.
   var scriptEnvironment: [String: String] {
     [
-      "SUPACODE_WORKTREE_PATH": workingDirectory.path(percentEncoded: false),
-      "SUPACODE_ROOT_PATH": repositoryRootURL.path(percentEncoded: false),
+      "PROWL_WORKTREE_PATH": workingDirectory.path(percentEncoded: false),
+      "PROWL_ROOT_PATH": repositoryRootURL.path(percentEncoded: false),
     ]
   }
 

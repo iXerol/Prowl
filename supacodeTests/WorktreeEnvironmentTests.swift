@@ -14,8 +14,8 @@ struct WorktreeEnvironmentTests {
       repositoryRootURL: URL(fileURLWithPath: "/tmp/repo"),
     )
     let env = worktree.scriptEnvironment
-    #expect(env["SUPACODE_WORKTREE_PATH"] == "/tmp/repo/wt-1")
-    #expect(env["SUPACODE_ROOT_PATH"] == "/tmp/repo")
+    #expect(env["PROWL_WORKTREE_PATH"] == "/tmp/repo/wt-1")
+    #expect(env["PROWL_ROOT_PATH"] == "/tmp/repo")
     #expect(env.count == 2)
   }
 
@@ -28,8 +28,8 @@ struct WorktreeEnvironmentTests {
       repositoryRootURL: URL(fileURLWithPath: "/tmp/repo/.bare"),
     )
     let exports = worktree.scriptEnvironmentExportPrefix
-    #expect(exports.contains("export SUPACODE_WORKTREE_PATH='/tmp/repo/wt-1'"))
-    #expect(exports.contains("export SUPACODE_ROOT_PATH='/tmp/repo/.bare'"))
+    #expect(exports.contains("export PROWL_WORKTREE_PATH='/tmp/repo/wt-1'"))
+    #expect(exports.contains("export PROWL_ROOT_PATH='/tmp/repo/.bare'"))
     #expect(exports.hasSuffix("\n"))
   }
 
@@ -45,8 +45,8 @@ struct WorktreeEnvironmentTests {
       .trimmingCharacters(in: .newlines)
       .components(separatedBy: "\n")
     #expect(lines.count == 2)
-    #expect(lines[0].contains("SUPACODE_ROOT_PATH"))
-    #expect(lines[1].contains("SUPACODE_WORKTREE_PATH"))
+    #expect(lines[0].contains("PROWL_ROOT_PATH"))
+    #expect(lines[1].contains("PROWL_WORKTREE_PATH"))
   }
 
   @Test func exportPrefixQuotesPathsWithSpaces() {
@@ -58,8 +58,8 @@ struct WorktreeEnvironmentTests {
       repositoryRootURL: URL(fileURLWithPath: "/tmp/my repo/.bare"),
     )
     let exports = worktree.scriptEnvironmentExportPrefix
-    #expect(exports.contains("export SUPACODE_WORKTREE_PATH='/tmp/my repo/wt 1'"))
-    #expect(exports.contains("export SUPACODE_ROOT_PATH='/tmp/my repo/.bare'"))
+    #expect(exports.contains("export PROWL_WORKTREE_PATH='/tmp/my repo/wt 1'"))
+    #expect(exports.contains("export PROWL_ROOT_PATH='/tmp/my repo/.bare'"))
   }
 
   @Test func blockingScriptInputUsesPortableBareExit() {
@@ -88,7 +88,7 @@ struct WorktreeEnvironmentTests {
     #expect(
       makeBlockingScriptInput(
         script: "   \n  ",
-        environmentExportPrefix: "export SUPACODE_ROOT_PATH='/tmp/repo'\n"
+        environmentExportPrefix: "export PROWL_ROOT_PATH='/tmp/repo'\n"
       ) == nil
     )
   }
