@@ -203,8 +203,10 @@ test: build-ghostty-xcframework
 test-cli-smoke: build-cli # Smoke test CLI executable
 	@set -euo pipefail; \
 	bin="$$(swift build --show-bin-path)/prowl"; \
-	"$$bin" --help >/dev/null; \
-	"$$bin" --version >/dev/null; \
+	help_output="$$("$$bin" --help)"; \
+	version_output="$$("$$bin" --version)"; \
+	echo "$$help_output" | grep -q "USAGE:"; \
+	echo "$$version_output" | grep -q "1.0.0"; \
 	socket="/tmp/prowl-cli-smoke-$$RANDOM.sock"; \
 	PROWL_CLI_SOCKET="$$socket" "$$bin" list --json >/tmp/prowl-cli-smoke.json || true; \
 	jq -e '.error.code == "APP_NOT_RUNNING"' /tmp/prowl-cli-smoke.json >/dev/null
