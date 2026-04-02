@@ -60,9 +60,10 @@ final class CLISocketServer {
 
     isRunning = true
 
-    // Accept connections in background
-    acceptTask = Task { [weak self] in
-      await self?.acceptLoop()
+    // Capture fd value for the nonisolated accept loop
+    let fd = serverFD
+    acceptTask = Task.detached { [weak self] in
+      await Self.acceptLoop(serverFD: fd, server: self)
     }
   }
 
@@ -77,9 +78,9 @@ final class CLISocketServer {
     unlink(socketPath)
   }
 
-  // MARK: - Accept loop
+  // MARK: - Accept loop (static + nonisolated to avoid actor isolation issues)
 
-  nonisolated private func acceptLoop() async {
+  private static func acceptLoop(serverFD: Int32, server: CLISocketServer?) async {
     while !Task.isCancelled {
       let clientFD = Darwin.accept(serverFD, nil, nil)
       guard clientFD >= 0 else {
@@ -88,14 +89,19 @@ final class CLISocketServer {
         }
         continue
       }
-      Task { @MainActor [weak self] in
-        await self?.handleClient(fd: clientFD)
+      // Dispatch to MainActor for routing
+      if let server {
+        Task { @MainActor in
+          await server.handleClient(fd: clientFD)
+        }
+      } else {
+        Darwin.close(clientFD)
       }
     }
   }
 
   private func handleClient(fd clientFD: Int32) async {
-    defer { close(clientFD) }
+    defer { Darwin.close(clientFD) }
 
     do {
       // Read length-prefixed request
@@ -129,7 +135,7 @@ final class CLISocketServer {
 
   // MARK: - Low-level I/O using Darwin read/write
 
-  nonisolated private static func fdRead(fd: Int32, count: Int) throws -> Data {
+  private static func fdRead(fd: Int32, count: Int) throws -> Data {
     var data = Data(capacity: count)
     var remaining = count
     let bufferSize = min(count, 65536)
@@ -147,7 +153,7 @@ final class CLISocketServer {
     return data
   }
 
-  nonisolated private static func fdWrite(fd: Int32, buffer: UnsafeRawBufferPointer) throws {
+  private static func fdWrite(fd: Int32, buffer: UnsafeRawBufferPointer) throws {
     var offset = 0
     while offset < buffer.count {
       let written = Darwin.write(fd, buffer.baseAddress!.advanced(by: offset), buffer.count - offset)
