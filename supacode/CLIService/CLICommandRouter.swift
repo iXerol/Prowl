@@ -47,6 +47,7 @@ final class CLICommandRouter {
 struct StubCommandHandler: CommandHandler {
   let command: String
 
+  // swiftlint:disable:next async_without_await
   func handle(envelope: CommandEnvelope) async -> CommandResponse {
     CommandResponse(
       ok: false,

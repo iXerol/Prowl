@@ -7,6 +7,7 @@ import Foundation
 /// For v1, `data` is left as raw JSON bytes so each command can define
 /// its own strongly-typed success payload without introducing `Any`.
 public struct CommandResponse: Codable, Sendable {
+  // swiftlint:disable:next identifier_name
   public let ok: Bool
   public let command: String
   public let schemaVersion: String
@@ -19,6 +20,7 @@ public struct CommandResponse: Codable, Sendable {
   public let error: CommandError?
 
   public init(
+    // swiftlint:disable:next identifier_name
     ok: Bool,
     command: String,
     schemaVersion: String,
@@ -33,6 +35,7 @@ public struct CommandResponse: Codable, Sendable {
   }
 
   enum CodingKeys: String, CodingKey {
+    // swiftlint:disable:next identifier_name
     case ok
     case command
     case schemaVersion = "schema_version"
@@ -111,18 +114,18 @@ enum JSONValue: Codable, Sendable {
     let container = try decoder.singleValueContainer()
     if container.decodeNil() {
       self = .null
-    } else if let b = try? container.decode(Bool.self) {
-      self = .bool(b)
-    } else if let i = try? container.decode(Int.self) {
-      self = .int(i)
-    } else if let d = try? container.decode(Double.self) {
-      self = .double(d)
-    } else if let s = try? container.decode(String.self) {
-      self = .string(s)
-    } else if let a = try? container.decode([JSONValue].self) {
-      self = .array(a)
-    } else if let o = try? container.decode([String: JSONValue].self) {
-      self = .object(o)
+    } else if let boolValue = try? container.decode(Bool.self) {
+      self = .bool(boolValue)
+    } else if let intValue = try? container.decode(Int.self) {
+      self = .int(intValue)
+    } else if let doubleValue = try? container.decode(Double.self) {
+      self = .double(doubleValue)
+    } else if let stringValue = try? container.decode(String.self) {
+      self = .string(stringValue)
+    } else if let arrayValue = try? container.decode([JSONValue].self) {
+      self = .array(arrayValue)
+    } else if let objectValue = try? container.decode([String: JSONValue].self) {
+      self = .object(objectValue)
     } else {
       throw DecodingError.dataCorruptedError(
         in: container,
@@ -135,12 +138,12 @@ enum JSONValue: Codable, Sendable {
     var container = encoder.singleValueContainer()
     switch self {
     case .null: try container.encodeNil()
-    case .bool(let b): try container.encode(b)
-    case .int(let i): try container.encode(i)
-    case .double(let d): try container.encode(d)
-    case .string(let s): try container.encode(s)
-    case .array(let a): try container.encode(a)
-    case .object(let o): try container.encode(o)
+    case .bool(let boolValue): try container.encode(boolValue)
+    case .int(let intValue): try container.encode(intValue)
+    case .double(let doubleValue): try container.encode(doubleValue)
+    case .string(let stringValue): try container.encode(stringValue)
+    case .array(let arrayValue): try container.encode(arrayValue)
+    case .object(let objectValue): try container.encode(objectValue)
     }
   }
 }
