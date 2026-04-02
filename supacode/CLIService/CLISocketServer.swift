@@ -35,10 +35,14 @@ final class CLISocketServer {
     // Bind
     var addr = sockaddr_un()
     addr.sun_family = sa_family_t(AF_UNIX)
-    socketPath.withCString { cstr in
-      withUnsafeMutablePointer(to: &addr.sun_path) { pathPtr in
-        _ = memcpy(pathPtr, cstr, min(strlen(cstr) + 1, MemoryLayout.size(ofValue: addr.sun_path)))
+    let pathBytes = Array(socketPath.utf8)
+    let maxLen = MemoryLayout.size(ofValue: addr.sun_path) - 1
+    let copyLen = min(pathBytes.count, maxLen)
+    withUnsafeMutableBytes(of: &addr.sun_path) { sunPathPtr in
+      for idx in 0..<copyLen {
+        sunPathPtr[idx] = Int8(bitPattern: pathBytes[idx])
       }
+      sunPathPtr[copyLen] = 0
     }
 
     let bindResult = withUnsafePointer(to: &addr) { ptr in
