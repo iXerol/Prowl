@@ -61,9 +61,9 @@ final class CLISocketServer {
     isRunning = true
 
     // Capture fd value for the nonisolated accept loop
-    let fd = serverFD
+    let listeningFD = serverFD
     acceptTask = Task.detached { [weak self] in
-      await Self.acceptLoop(serverFD: fd, server: self)
+      await Self.acceptLoop(serverFD: listeningFD, server: self)
     }
   }
 
@@ -92,7 +92,7 @@ final class CLISocketServer {
       // Dispatch to MainActor for routing
       if let server {
         Task { @MainActor in
-          await server.handleClient(fd: clientFD)
+          await server.handleClient(clientFD: clientFD)
         }
       } else {
         Darwin.close(clientFD)
@@ -100,18 +100,18 @@ final class CLISocketServer {
     }
   }
 
-  private func handleClient(fd clientFD: Int32) async {
+  private func handleClient(clientFD: Int32) async {
     defer { Darwin.close(clientFD) }
 
     do {
       // Read length-prefixed request
-      let lengthData = try Self.fdRead(fd: clientFD, count: 4)
+      let lengthData = try Self.fdRead(fildes: clientFD, count: 4)
       let length = lengthData.withUnsafeBytes {
         UInt32(bigEndian: $0.load(as: UInt32.self))
       }
       guard length > 0, length < 10_000_000 else { return }
 
-      let requestData = try Self.fdRead(fd: clientFD, count: Int(length))
+      let requestData = try Self.fdRead(fildes: clientFD, count: Int(length))
 
       // Decode envelope
       let decoder = JSONDecoder()
@@ -126,8 +126,8 @@ final class CLISocketServer {
       let responseData = try encoder.encode(response)
 
       var responseLength = UInt32(responseData.count).bigEndian
-      try withUnsafeBytes(of: &responseLength) { try Self.fdWrite(fd: clientFD, buffer: $0) }
-      try responseData.withUnsafeBytes { try Self.fdWrite(fd: clientFD, buffer: $0) }
+      try withUnsafeBytes(of: &responseLength) { try Self.fdWrite(fildes: clientFD, buffer: $0) }
+      try responseData.withUnsafeBytes { try Self.fdWrite(fildes: clientFD, buffer: $0) }
     } catch {
       // Connection-level errors are silently dropped
     }
@@ -135,7 +135,7 @@ final class CLISocketServer {
 
   // MARK: - Low-level I/O using Darwin read/write
 
-  private static func fdRead(fd: Int32, count: Int) throws -> Data {
+  private static func fdRead(fildes: Int32, count: Int) throws -> Data {
     var data = Data(capacity: count)
     var remaining = count
     let bufferSize = min(count, 65536)
@@ -143,7 +143,7 @@ final class CLISocketServer {
     defer { buffer.deallocate() }
     while remaining > 0 {
       let toRead = min(remaining, bufferSize)
-      let bytesRead = Darwin.read(fd, buffer, toRead)
+      let bytesRead = Darwin.read(fildes, buffer, toRead)
       guard bytesRead > 0 else {
         throw CLIServiceError.readFailed
       }
@@ -153,10 +153,10 @@ final class CLISocketServer {
     return data
   }
 
-  private static func fdWrite(fd: Int32, buffer: UnsafeRawBufferPointer) throws {
+  private static func fdWrite(fildes: Int32, buffer: UnsafeRawBufferPointer) throws {
     var offset = 0
     while offset < buffer.count {
-      let written = Darwin.write(fd, buffer.baseAddress!.advanced(by: offset), buffer.count - offset)
+      let written = Darwin.write(fildes, buffer.baseAddress!.advanced(by: offset), buffer.count - offset)
       guard written > 0 else {
         throw CLIServiceError.writeFailed
       }
