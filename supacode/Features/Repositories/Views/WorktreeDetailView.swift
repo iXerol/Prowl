@@ -244,7 +244,9 @@ struct WorktreeDetailView: View {
     // "unify" this back into a `ToolbarItemGroup` to match Normal — that
     // reintroduces the jump.
     if showRunButton || !state.customCommands.isEmpty {
-      ToolbarSpacer(.fixed)
+      if #available(macOS 26, *) {
+        ToolbarSpacer(.fixed)
+      }
       ToolbarItem(placement: .primaryAction) {
         // `spacing: 0` keeps the cluster as tight as the Normal toolbar's
         // ToolbarItemGroup (whose buttons sit nearly flush on macOS 26); the
@@ -818,7 +820,9 @@ struct WorktreeDetailView: View {
       }
 
       if toolbarState.showDefaultEditorInToolbar {
-        ToolbarSpacer(.fixed)
+        if #available(macOS 26, *) {
+          ToolbarSpacer(.fixed)
+        }
         ToolbarItemGroup {
           openMenu(
             openActionSelection: toolbarState.openActionSelection,
@@ -913,7 +917,9 @@ struct WorktreeDetailView: View {
       // which items are hidden. Run and the custom commands share one group (no
       // spacer between them), matching the grouping before the toolbar toggles.
       if showRunButton || !inlineEntries.isEmpty || !overflowEntries.isEmpty {
-        ToolbarSpacer(.fixed)
+        if #available(macOS 26, *) {
+          ToolbarSpacer(.fixed)
+        }
       }
 
       if showRunButton {

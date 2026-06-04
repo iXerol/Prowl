@@ -178,20 +178,7 @@ struct WorktreeRowsView: View {
         hoveredWorktreeID = nil
       }
     }
-    .onDragSessionUpdated { session in
-      let didEnd =
-        if case .ended = session.phase {
-          true
-        } else if case .dataTransferCompleted = session.phase {
-          true
-        } else {
-          false
-        }
-      handleWorktreeDragSession(
-        draggedIDs: Set(session.draggedItemIDs(for: Worktree.ID.self)),
-        didEnd: didEnd
-      )
-    }
+    .modifier(WorktreeDragSessionHandler(onSession: handleWorktreeDragSession(draggedIDs:didEnd:)))
   }
 
   private func rowConfig(
@@ -542,6 +529,31 @@ struct WorktreeRowsView: View {
       }
     }
     return row.name
+  }
+}
+
+/// Forwards worktree drag-session updates on macOS 26+, where
+/// `onDragSessionUpdated` exists; on earlier systems the `DropDelegate` path
+/// drives reordering and this becomes a no-op.
+private struct WorktreeDragSessionHandler: ViewModifier {
+  let onSession: (_ draggedIDs: Set<Worktree.ID>, _ didEnd: Bool) -> Void
+
+  func body(content: Content) -> some View {
+    if #available(macOS 26, *) {
+      content.onDragSessionUpdated { session in
+        let didEnd =
+          if case .ended = session.phase {
+            true
+          } else if case .dataTransferCompleted = session.phase {
+            true
+          } else {
+            false
+          }
+        onSession(Set(session.draggedItemIDs(for: Worktree.ID.self)), didEnd)
+      }
+    } else {
+      content
+    }
   }
 }
 

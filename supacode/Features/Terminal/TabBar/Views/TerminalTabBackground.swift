@@ -13,7 +13,7 @@ struct TerminalTabBackground: View {
         // brightness-ladder fill, for the macOS 26 look.
         Capsule()
           .fill(TerminalTabBarColors.activeTabBackground)
-          .glassEffect(.regular, in: Capsule())
+          .glassBackground(in: Capsule())
       } else if isHovering || isPressing || isDragging {
         Capsule().fill(TerminalTabBarColors.hoveredTabBackground)
       } else {

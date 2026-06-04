@@ -125,15 +125,7 @@ struct SidebarListView: View {
       } action: { newHeight in
         sidebarHeight = newHeight
       }
-      .onDragSessionUpdated { session in
-        if case .ended = session.phase {
-          endSidebarDrag()
-          return
-        }
-        if case .dataTransferCompleted = session.phase {
-          endSidebarDrag()
-        }
-      }
+      .modifier(SidebarDragSessionCleanup(onDragEnded: endSidebarDrag))
       .safeAreaInset(edge: .top, spacing: 0) {
         topSegmentBar
       }
@@ -641,6 +633,29 @@ struct SidebarListView: View {
       }
     }
     return best?.id
+  }
+}
+
+/// Routes drag-session end/cancel back to the sidebar drag cleanup on macOS 26+,
+/// where `onDragSessionUpdated` exists; on earlier systems the `DropDelegate`
+/// path handles ordering and this becomes a no-op.
+private struct SidebarDragSessionCleanup: ViewModifier {
+  let onDragEnded: () -> Void
+
+  func body(content: Content) -> some View {
+    if #available(macOS 26, *) {
+      content.onDragSessionUpdated { session in
+        if case .ended = session.phase {
+          onDragEnded()
+          return
+        }
+        if case .dataTransferCompleted = session.phase {
+          onDragEnded()
+        }
+      }
+    } else {
+      content
+    }
   }
 }
 

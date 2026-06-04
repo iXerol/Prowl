@@ -249,7 +249,13 @@ private enum GhosttySearchCorner {
 
 private struct GhosttySearchOverlayShape: Shape {
   func path(in rect: CGRect) -> Path {
-    ConcentricRectangle(corners: .concentric(minimum: 8), isUniform: true).path(in: rect)
+    // `ConcentricRectangle` is macOS 26 only; fall back to a fixed-radius
+    // rounded rectangle (matching the `minimum: 8`) on earlier systems.
+    if #available(macOS 26, *) {
+      return ConcentricRectangle(corners: .concentric(minimum: 8), isUniform: true).path(in: rect)
+    } else {
+      return RoundedRectangle(cornerRadius: 8).path(in: rect)
+    }
   }
 }
 
